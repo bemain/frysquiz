@@ -163,9 +163,12 @@ class _FormCard extends StatelessWidget {
                         ),
                         const SizedBox(width: 4),
                         Text(
-                          form.targetType == FormTargetType.public
-                              ? 'Allmän'
-                              : '${form.targetGroupIds.length} grupp(er)',
+                          switch (form.targetType) {
+                            FormTargetType.public => 'Allmän',
+                            FormTargetType.both => 'Allmän + grupper',
+                            FormTargetType.group =>
+                              '${form.targetGroupIds.length} grupp(er)',
+                          },
                           style:
                               Theme.of(context).textTheme.labelSmall?.copyWith(
                             color: cs.onSurfaceVariant,

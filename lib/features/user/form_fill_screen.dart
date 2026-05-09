@@ -9,6 +9,8 @@ import '../../providers/auth_provider.dart';
 import '../../providers/form_provider.dart';
 import '../../providers/service_providers.dart';
 
+const _kPrimaryRed = Color(0xFFD32F2F);
+
 class FormFillScreen extends ConsumerWidget {
   const FormFillScreen({super.key, required this.formId});
 
@@ -35,7 +37,11 @@ class FormFillScreen extends ConsumerWidget {
 }
 
 class FormFillContent extends ConsumerStatefulWidget {
-  const FormFillContent({super.key, required this.form, required this.isPublic});
+  const FormFillContent({
+    super.key,
+    required this.form,
+    required this.isPublic,
+  });
 
   final FormModel form;
   final bool isPublic;
@@ -80,11 +86,14 @@ class FormFillContentState extends ConsumerState<FormFillContent> {
 
     final questions = widget.form.questions;
     final progress = ((_currentIndex + 1) / questions.length);
-    final cs = Theme.of(context).colorScheme;
 
     return Scaffold(
+      backgroundColor: Colors.white,
       appBar: AppBar(
-        title: Text(widget.form.title),
+        title: Text(
+          widget.form.title,
+          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+        ),
         leading: widget.isPublic
             ? null
             : IconButton(
@@ -95,20 +104,34 @@ class FormFillContentState extends ConsumerState<FormFillContent> {
           preferredSize: const Size.fromHeight(4),
           child: LinearProgressIndicator(
             value: progress,
-            backgroundColor: cs.surfaceContainerHighest,
+            backgroundColor: const Color(0xFFFFCDD2),
+            valueColor: const AlwaysStoppedAnimation<Color>(_kPrimaryRed),
+            minHeight: 4,
           ),
         ),
       ),
       body: Column(
         children: [
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
             child: Row(
               children: [
-                Text(
-                  'Fråga ${_currentIndex + 1} av ${questions.length}',
-                  style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                    color: cs.onSurfaceVariant,
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFFF5F5),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    'Fråga ${_currentIndex + 1} av ${questions.length}',
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: _kPrimaryRed,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ),
               ],
@@ -116,11 +139,11 @@ class FormFillContentState extends ConsumerState<FormFillContent> {
           ),
           Expanded(
             child: AnimatedSwitcher(
-              duration: const Duration(milliseconds: 250),
+              duration: const Duration(milliseconds: 220),
               child: KeyedSubtree(
                 key: ValueKey(_currentIndex),
                 child: SingleChildScrollView(
-                  padding: const EdgeInsets.all(16),
+                  padding: const EdgeInsets.all(20),
                   child: _QuestionWidget(
                     question: _currentQuestion,
                     answer: _answers[_currentQuestion.id],
@@ -130,19 +153,23 @@ class FormFillContentState extends ConsumerState<FormFillContent> {
               ),
             ),
           ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+          Container(
+            padding: const EdgeInsets.fromLTRB(20, 12, 20, 28),
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              border: Border(top: BorderSide(color: Color(0xFFEEEEEE))),
+            ),
             child: Row(
               children: [
-                if (!_isFirst)
+                if (!_isFirst) ...[
                   Expanded(
                     child: OutlinedButton(
-                      onPressed: () =>
-                          setState(() => _currentIndex--),
+                      onPressed: () => setState(() => _currentIndex--),
                       child: const Text('Tillbaka'),
                     ),
                   ),
-                if (!_isFirst) const SizedBox(width: 12),
+                  const SizedBox(width: 12),
+                ],
                 Expanded(
                   child: FilledButton(
                     onPressed: _submitting
@@ -154,7 +181,10 @@ class FormFillContentState extends ConsumerState<FormFillContent> {
                         ? const SizedBox(
                             height: 20,
                             width: 20,
-                            child: CircularProgressIndicator(strokeWidth: 2),
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
                           )
                         : Text(_isLast ? 'Skicka in' : 'Nästa'),
                   ),
@@ -186,11 +216,14 @@ class _QuestionWidget extends StatelessWidget {
       children: [
         Text(
           question.text,
-          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+          style: const TextStyle(
+            fontSize: 18,
             fontWeight: FontWeight.w600,
+            color: Color(0xFF1A1A1A),
+            height: 1.3,
           ),
         ),
-        const SizedBox(height: 20),
+        const SizedBox(height: 24),
         switch (question.type) {
           QuestionType.freeText => _FreeTextInput(
             question: question,
@@ -244,9 +277,7 @@ class _FreeTextInputState extends State<_FreeTextInput> {
   @override
   void initState() {
     super.initState();
-    _controller = TextEditingController(
-      text: widget.answer?.textValue ?? '',
-    );
+    _controller = TextEditingController(text: widget.answer?.textValue ?? '');
   }
 
   @override
@@ -262,7 +293,6 @@ class _FreeTextInputState extends State<_FreeTextInput> {
       maxLines: 5,
       decoration: const InputDecoration(
         hintText: 'Skriv ditt svar här...',
-        border: OutlineInputBorder(),
       ),
       onChanged: (v) => widget.onAnswer(
         AnswerModel(questionId: widget.question.id, textValue: v),
@@ -288,10 +318,11 @@ class _MultipleChoiceInput extends StatelessWidget {
     return Column(
       children: question.options.map((opt) {
         final isChecked = selected.contains(opt);
-        return CheckboxListTile(
-          value: isChecked,
-          title: Text(opt),
-          onChanged: (_) {
+        return _OptionCard(
+          label: opt,
+          isSelected: isChecked,
+          isMulti: true,
+          onTap: () {
             final updated = isChecked
                 ? selected.where((o) => o != opt).toList()
                 : [...selected, opt];
@@ -322,16 +353,88 @@ class _SingleChoiceInput extends StatelessWidget {
     final selected = answer?.selectedOptions?.firstOrNull;
     return Column(
       children: question.options.map((opt) {
-        return RadioListTile<String>(
-          value: opt,
-          groupValue: selected,
-          title: Text(opt),
-          onChanged: (v) => onAnswer(AnswerModel(
+        return _OptionCard(
+          label: opt,
+          isSelected: selected == opt,
+          isMulti: false,
+          onTap: () => onAnswer(AnswerModel(
             questionId: question.id,
-            selectedOptions: v != null ? [v] : [],
+            selectedOptions: [opt],
           )),
         );
       }).toList(),
+    );
+  }
+}
+
+class _OptionCard extends StatelessWidget {
+  const _OptionCard({
+    required this.label,
+    required this.isSelected,
+    required this.isMulti,
+    required this.onTap,
+  });
+
+  final String label;
+  final bool isSelected;
+  final bool isMulti;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
+        margin: const EdgeInsets.only(bottom: 10),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(12),
+          color: isSelected
+              ? const Color(0xFFFFF5F5)
+              : const Color(0xFFF9F9F9),
+          border: Border.all(
+            color: isSelected ? _kPrimaryRed : const Color(0xFFE8E8E8),
+            width: isSelected ? 2 : 1,
+          ),
+        ),
+        child: Row(
+          children: [
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 150),
+              width: 22,
+              height: 22,
+              decoration: BoxDecoration(
+                shape: isMulti ? BoxShape.rectangle : BoxShape.circle,
+                borderRadius: isMulti ? BorderRadius.circular(5) : null,
+                border: Border.all(
+                  color:
+                      isSelected ? _kPrimaryRed : const Color(0xFFCCCCCC),
+                  width: 2,
+                ),
+                color: isSelected ? _kPrimaryRed : Colors.white,
+              ),
+              child: isSelected
+                  ? const Icon(Icons.check, size: 14, color: Colors.white)
+                  : null,
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                label,
+                style: TextStyle(
+                  fontSize: 15,
+                  color: isSelected
+                      ? const Color(0xFF1A1A1A)
+                      : const Color(0xFF424242),
+                  fontWeight:
+                      isSelected ? FontWeight.w600 : FontWeight.normal,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
@@ -349,7 +452,6 @@ class _RatingInput extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
     final selected = answer?.ratingValue;
     final values = List.generate(
       question.ratingMax - question.ratingMin + 1,
@@ -369,13 +471,15 @@ class _RatingInput extends StatelessWidget {
               ),
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 150),
-                width: 44,
-                height: 44,
+                width: 46,
+                height: 46,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: isSelected ? cs.primary : cs.surfaceContainerHighest,
+                  color: isSelected ? _kPrimaryRed : const Color(0xFFF5F5F5),
                   border: Border.all(
-                    color: isSelected ? cs.primary : cs.outlineVariant,
+                    color: isSelected
+                        ? _kPrimaryRed
+                        : const Color(0xFFE0E0E0),
                     width: 2,
                   ),
                 ),
@@ -383,8 +487,11 @@ class _RatingInput extends StatelessWidget {
                   child: Text(
                     '$v',
                     style: TextStyle(
-                      color: isSelected ? cs.onPrimary : cs.onSurface,
+                      color: isSelected
+                          ? Colors.white
+                          : const Color(0xFF424242),
                       fontWeight: FontWeight.bold,
+                      fontSize: 16,
                     ),
                   ),
                 ),
@@ -394,20 +501,22 @@ class _RatingInput extends StatelessWidget {
         ),
         if (question.ratingMinLabel != null || question.ratingMaxLabel != null)
           Padding(
-            padding: const EdgeInsets.only(top: 8),
+            padding: const EdgeInsets.only(top: 10),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
                   question.ratingMinLabel ?? '',
-                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                    color: cs.onSurfaceVariant,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: Color(0xFF9E9E9E),
                   ),
                 ),
                 Text(
                   question.ratingMaxLabel ?? '',
-                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                    color: cs.onSurfaceVariant,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: Color(0xFF9E9E9E),
                   ),
                 ),
               ],
@@ -432,8 +541,6 @@ class _YesNoInput extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final selected = answer?.yesNoValue;
-    final cs = Theme.of(context).colorScheme;
-
     return Row(
       children: [
         Expanded(
@@ -441,7 +548,7 @@ class _YesNoInput extends StatelessWidget {
             label: 'Ja',
             icon: Icons.thumb_up_outlined,
             isSelected: selected == true,
-            selectedColor: cs.primary,
+            selectedColor: Colors.green,
             onTap: () => onAnswer(
               AnswerModel(questionId: question.id, yesNoValue: true),
             ),
@@ -453,7 +560,7 @@ class _YesNoInput extends StatelessWidget {
             label: 'Nej',
             icon: Icons.thumb_down_outlined,
             isSelected: selected == false,
-            selectedColor: cs.error,
+            selectedColor: _kPrimaryRed,
             onTap: () => onAnswer(
               AnswerModel(questionId: question.id, yesNoValue: false),
             ),
@@ -481,33 +588,37 @@ class _YesNoButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
     return GestureDetector(
       onTap: onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 150),
-        height: 80,
+        height: 90,
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(14),
           color: isSelected
-              ? selectedColor.withAlpha(30)
-              : cs.surfaceContainerHighest,
+              ? selectedColor.withAlpha(20)
+              : const Color(0xFFF9F9F9),
           border: Border.all(
-            color: isSelected ? selectedColor : cs.outlineVariant,
-            width: 2,
+            color: isSelected ? selectedColor : const Color(0xFFE8E8E8),
+            width: isSelected ? 2 : 1,
           ),
         ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, color: isSelected ? selectedColor : cs.onSurfaceVariant),
-            const SizedBox(height: 4),
+            Icon(
+              icon,
+              color: isSelected ? selectedColor : const Color(0xFF9E9E9E),
+              size: 26,
+            ),
+            const SizedBox(height: 6),
             Text(
               label,
               style: TextStyle(
-                color: isSelected ? selectedColor : cs.onSurfaceVariant,
+                color: isSelected ? selectedColor : const Color(0xFF9E9E9E),
                 fontWeight:
                     isSelected ? FontWeight.bold : FontWeight.normal,
+                fontSize: 15,
               ),
             ),
           ],
@@ -524,41 +635,52 @@ class _ThankYouScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
     return Scaffold(
+      backgroundColor: Colors.white,
       body: Center(
         child: Padding(
           padding: const EdgeInsets.all(32),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(
-                Icons.check_circle_outline,
-                size: 80,
-                color: cs.primary,
+              Container(
+                width: 100,
+                height: 100,
+                decoration: BoxDecoration(
+                  color: Colors.green.withAlpha(20),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.check_circle_outline,
+                  size: 56,
+                  color: Colors.green,
+                ),
               ),
-              const SizedBox(height: 24),
-              Text(
+              const SizedBox(height: 28),
+              const Text(
                 'Tack för ditt svar!',
-                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                style: TextStyle(
+                  fontSize: 24,
                   fontWeight: FontWeight.bold,
+                  color: Color(0xFF1A1A1A),
                 ),
                 textAlign: TextAlign.center,
               ),
-              const SizedBox(height: 12),
-              Text(
+              const SizedBox(height: 10),
+              const Text(
                 'Ditt svar har registrerats.',
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: cs.onSurfaceVariant,
-                ),
+                style: TextStyle(fontSize: 15, color: Color(0xFF9E9E9E)),
                 textAlign: TextAlign.center,
               ),
-              const SizedBox(height: 32),
+              const SizedBox(height: 36),
               if (!isPublic)
-                FilledButton.icon(
-                  onPressed: () => context.go('/home'),
-                  icon: const Icon(Icons.home),
-                  label: const Text('Tillbaka till startsidan'),
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton.icon(
+                    onPressed: () => context.go('/home'),
+                    icon: const Icon(Icons.home),
+                    label: const Text('Tillbaka till startsidan'),
+                  ),
                 ),
             ],
           ),

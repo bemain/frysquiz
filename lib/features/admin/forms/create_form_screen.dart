@@ -10,6 +10,10 @@ import '../../../providers/form_provider.dart';
 import '../../../providers/group_provider.dart';
 import '../../../providers/service_providers.dart';
 
+const _kPrimaryRed = Color(0xFFD32F2F);
+
+const _kStepLabels = ['Detaljer', 'Målgrupp', 'Frågor', 'Granska'];
+
 class CreateFormScreen extends ConsumerStatefulWidget {
   const CreateFormScreen({super.key});
 
@@ -20,15 +24,13 @@ class CreateFormScreen extends ConsumerStatefulWidget {
 class _CreateFormScreenState extends ConsumerState<CreateFormScreen> {
   int _step = 0;
 
-  // Step 1
   final _titleController = TextEditingController();
   final _descController = TextEditingController();
 
-  // Step 2
-  FormTargetType _targetType = FormTargetType.group;
+  // Separate controls so public + groups can both be active simultaneously
+  bool _isPublic = false;
   final Set<String> _selectedGroupIds = {};
 
-  // Step 3
   final List<QuestionModel> _questions = [];
   int _questionCounter = 0;
 
@@ -43,19 +45,31 @@ class _CreateFormScreenState extends ConsumerState<CreateFormScreen> {
       _titleController.text.trim().isNotEmpty &&
       _descController.text.trim().isNotEmpty;
 
-  bool get _step2Valid =>
-      _targetType == FormTargetType.public || _selectedGroupIds.isNotEmpty;
+  bool get _step2Valid => _isPublic || _selectedGroupIds.isNotEmpty;
 
   bool get _step3Valid => _questions.isNotEmpty;
 
+  bool get _canProceed => switch (_step) {
+    0 => _step1Valid,
+    1 => _step2Valid,
+    2 => _step3Valid,
+    _ => true,
+  };
+
   Future<void> _save(FormStatus status) async {
     final user = ref.read(authNotifierProvider).currentUser!;
+    final targetType = _isPublic && _selectedGroupIds.isNotEmpty
+        ? FormTargetType.both
+        : _isPublic
+            ? FormTargetType.public
+            : FormTargetType.group;
+
     final form = FormModel(
       id: 'f_${DateTime.now().millisecondsSinceEpoch}',
       title: _titleController.text.trim(),
       description: _descController.text.trim(),
       createdBy: user.id,
-      targetType: _targetType,
+      targetType: targetType,
       targetGroupIds: _selectedGroupIds.toList(),
       status: status,
       createdAt: DateTime.now(),
@@ -78,109 +92,178 @@ class _CreateFormScreenState extends ConsumerState<CreateFormScreen> {
     });
   }
 
-  void _removeQuestion(int index) {
-    setState(() => _questions.removeAt(index));
-  }
-
-  void _updateQuestion(int index, QuestionModel question) {
-    setState(() => _questions[index] = question);
+  Widget _buildStepContent() {
+    return switch (_step) {
+      0 => _Step1Details(
+        titleController: _titleController,
+        descController: _descController,
+        onChanged: () => setState(() {}),
+      ),
+      1 => _Step2Target(
+        isPublic: _isPublic,
+        selectedGroupIds: _selectedGroupIds,
+        onPublicChanged: (v) => setState(() => _isPublic = v),
+        onGroupToggled: (id) => setState(() {
+          if (_selectedGroupIds.contains(id)) {
+            _selectedGroupIds.remove(id);
+          } else {
+            _selectedGroupIds.add(id);
+          }
+        }),
+      ),
+      2 => _Step3Questions(
+        questions: _questions,
+        onAdd: _addQuestion,
+        onRemove: (i) => setState(() => _questions.removeAt(i)),
+        onUpdate: (i, q) => setState(() => _questions[i] = q),
+      ),
+      _ => _Step4Review(
+        title: _titleController.text,
+        description: _descController.text,
+        isPublic: _isPublic,
+        selectedGroupIds: _selectedGroupIds,
+        questions: _questions,
+      ),
+    };
   }
 
   @override
   Widget build(BuildContext context) {
+    final isLastStep = _step == _kStepLabels.length - 1;
+
     return Scaffold(
-      appBar: AppBar(title: const Text('Skapa ny enkät')),
-      body: Stepper(
-        currentStep: _step,
-        onStepTapped: (i) {
-          if (i < _step) setState(() => _step = i);
-        },
-        controlsBuilder: (context, details) => _StepperControls(
-          step: _step,
-          isLastStep: _step == 3,
-          canProceed: switch (_step) {
-            0 => _step1Valid,
-            1 => _step2Valid,
-            2 => _step3Valid,
-            _ => true,
-          },
-          onNext: () {
-            if (_step < 3) {
-              setState(() => _step++);
-            }
-          },
-          onBack: _step > 0 ? () => setState(() => _step--) : null,
-          onSaveDraft: _step == 3 ? () => _save(FormStatus.draft) : null,
-          onSend: _step == 3 ? () => _save(FormStatus.sent) : null,
+      backgroundColor: Colors.white,
+      appBar: AppBar(
+        title: const Text('Skapa ny enkät'),
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(4),
+          child: LinearProgressIndicator(
+            value: (_step + 1) / _kStepLabels.length,
+            backgroundColor: const Color(0xFFFFCDD2),
+            valueColor: const AlwaysStoppedAnimation<Color>(_kPrimaryRed),
+            minHeight: 4,
+          ),
         ),
-        steps: [
-          Step(
-            title: const Text('Formulärdetaljer'),
-            isActive: _step >= 0,
-            state: _step > 0 && _step1Valid
-                ? StepState.complete
-                : StepState.indexed,
-            content: _Step1Details(
-              titleController: _titleController,
-              descController: _descController,
-              onChanged: () => setState(() {}),
-            ),
-          ),
-          Step(
-            title: const Text('Målgrupp'),
-            isActive: _step >= 1,
-            state: _step > 1 && _step2Valid
-                ? StepState.complete
-                : StepState.indexed,
-            content: _Step2Target(
-              targetType: _targetType,
-              selectedGroupIds: _selectedGroupIds,
-              onTargetTypeChanged: (t) => setState(() {
-                _targetType = t;
-                _selectedGroupIds.clear();
-              }),
-              onGroupToggled: (id) => setState(() {
-                if (_selectedGroupIds.contains(id)) {
-                  _selectedGroupIds.remove(id);
-                } else {
-                  _selectedGroupIds.add(id);
-                }
-              }),
-            ),
-          ),
-          Step(
-            title: const Text('Frågor'),
-            isActive: _step >= 2,
-            state: _step > 2 && _step3Valid
-                ? StepState.complete
-                : StepState.indexed,
-            content: _Step3Questions(
-              questions: _questions,
-              onAdd: _addQuestion,
-              onRemove: _removeQuestion,
-              onUpdate: _updateQuestion,
-            ),
-          ),
-          Step(
-            title: const Text('Granska & Skicka'),
-            isActive: _step >= 3,
-            state: StepState.indexed,
-            content: _Step4Review(
-              title: _titleController.text,
-              description: _descController.text,
-              targetType: _targetType,
-              selectedGroupIds: _selectedGroupIds,
-              questions: _questions,
+      ),
+      body: Column(
+        children: [
+          _StepIndicator(currentStep: _step),
+          Expanded(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
+              child: _buildStepContent(),
             ),
           ),
         ],
+      ),
+      bottomNavigationBar: _BottomNav(
+        step: _step,
+        isLastStep: isLastStep,
+        canProceed: _canProceed,
+        onNext: () => setState(() => _step++),
+        onBack: _step > 0 ? () => setState(() => _step--) : null,
+        onSaveDraft: isLastStep ? () => _save(FormStatus.draft) : null,
+        onSend: isLastStep ? () => _save(FormStatus.sent) : null,
       ),
     );
   }
 }
 
-class _StepperControls extends StatelessWidget {
-  const _StepperControls({
+class _StepIndicator extends StatelessWidget {
+  const _StepIndicator({required this.currentStep});
+
+  final int currentStep;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+      child: Row(
+        children: List.generate(_kStepLabels.length * 2 - 1, (i) {
+          if (i.isOdd) {
+            final isDone = i ~/ 2 < currentStep;
+            return Expanded(
+              child: Container(
+                height: 2,
+                color: isDone ? _kPrimaryRed : const Color(0xFFEEEEEE),
+              ),
+            );
+          }
+          final stepIndex = i ~/ 2;
+          return _StepDot(
+            index: stepIndex,
+            label: _kStepLabels[stepIndex],
+            isDone: stepIndex < currentStep,
+            isCurrent: stepIndex == currentStep,
+          );
+        }),
+      ),
+    );
+  }
+}
+
+class _StepDot extends StatelessWidget {
+  const _StepDot({
+    required this.index,
+    required this.label,
+    required this.isDone,
+    required this.isCurrent,
+  });
+
+  final int index;
+  final String label;
+  final bool isDone;
+  final bool isCurrent;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          width: 28,
+          height: 28,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: isDone || isCurrent ? _kPrimaryRed : const Color(0xFFF0F0F0),
+            border: Border.all(
+              color: isDone || isCurrent
+                  ? _kPrimaryRed
+                  : const Color(0xFFDDDDDD),
+              width: 2,
+            ),
+          ),
+          child: Center(
+            child: isDone
+                ? const Icon(Icons.check, size: 14, color: Colors.white)
+                : Text(
+                    '${index + 1}',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                      color:
+                          isCurrent ? Colors.white : const Color(0xFF9E9E9E),
+                    ),
+                  ),
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 10,
+            color: isDone || isCurrent ? _kPrimaryRed : const Color(0xFF9E9E9E),
+            fontWeight: isCurrent ? FontWeight.w600 : FontWeight.normal,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _BottomNav extends StatelessWidget {
+  const _BottomNav({
     required this.step,
     required this.isLastStep,
     required this.canProceed,
@@ -200,39 +283,55 @@ class _StepperControls extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(top: 16),
+    return Container(
+      padding: EdgeInsets.fromLTRB(
+        20,
+        12,
+        20,
+        MediaQuery.of(context).padding.bottom + 16,
+      ),
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        border: Border(top: BorderSide(color: Color(0xFFEEEEEE))),
+      ),
       child: Row(
         children: [
-          if (isLastStep) ...[
-            OutlinedButton(
-              onPressed: onSaveDraft,
-              child: const Text('Spara utkast'),
-            ),
-            const SizedBox(width: 8),
-            FilledButton.icon(
-              onPressed: onSend,
-              icon: const Icon(Icons.send, size: 16),
-              label: const Text('Skicka'),
-            ),
-          ] else ...[
-            FilledButton(
-              onPressed: canProceed ? onNext : null,
-              child: const Text('Nästa'),
-            ),
-          ],
           if (onBack != null) ...[
-            const SizedBox(width: 8),
-            TextButton(
+            OutlinedButton(
               onPressed: onBack,
               child: const Text('Tillbaka'),
             ),
+            const SizedBox(width: 12),
           ],
+          if (isLastStep) ...[
+            Expanded(
+              child: OutlinedButton(
+                onPressed: onSaveDraft,
+                child: const Text('Spara utkast'),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: FilledButton.icon(
+                onPressed: onSend,
+                icon: const Icon(Icons.send, size: 16),
+                label: const Text('Publicera'),
+              ),
+            ),
+          ] else
+            Expanded(
+              child: FilledButton(
+                onPressed: canProceed ? onNext : null,
+                child: const Text('Nästa'),
+              ),
+            ),
         ],
       ),
     );
   }
 }
+
+// ── Step 1 ───────────────────────────────────────────────────────────────────
 
 class _Step1Details extends StatelessWidget {
   const _Step1Details({
@@ -248,21 +347,24 @@ class _Step1Details extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        const _Label('Formulärets titel'),
+        const SizedBox(height: 8),
         TextField(
           controller: titleController,
           decoration: const InputDecoration(
-            labelText: 'Titel *',
-            border: OutlineInputBorder(),
+            hintText: 'T.ex. Medarbetarundersökning Q2',
           ),
           onChanged: (_) => onChanged(),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 20),
+        const _Label('Beskrivning'),
+        const SizedBox(height: 8),
         TextField(
           controller: descController,
           decoration: const InputDecoration(
-            labelText: 'Beskrivning *',
-            border: OutlineInputBorder(),
+            hintText: 'Beskriv syftet med enkäten...',
           ),
           maxLines: 3,
           onChanged: (_) => onChanged(),
@@ -272,17 +374,19 @@ class _Step1Details extends StatelessWidget {
   }
 }
 
+// ── Step 2 ───────────────────────────────────────────────────────────────────
+
 class _Step2Target extends ConsumerWidget {
   const _Step2Target({
-    required this.targetType,
+    required this.isPublic,
     required this.selectedGroupIds,
-    required this.onTargetTypeChanged,
+    required this.onPublicChanged,
     required this.onGroupToggled,
   });
 
-  final FormTargetType targetType;
+  final bool isPublic;
   final Set<String> selectedGroupIds;
-  final ValueChanged<FormTargetType> onTargetTypeChanged;
+  final ValueChanged<bool> onPublicChanged;
   final ValueChanged<String> onGroupToggled;
 
   @override
@@ -292,44 +396,146 @@ class _Step2Target extends ConsumerWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        RadioListTile<FormTargetType>(
-          title: const Text('Skicka till grupp(er)'),
-          subtitle: const Text('Välj en eller flera grupper'),
-          value: FormTargetType.group,
-          groupValue: targetType,
-          onChanged: (v) => onTargetTypeChanged(v!),
-          contentPadding: EdgeInsets.zero,
-        ),
-        RadioListTile<FormTargetType>(
-          title: const Text('Allmän (delbar länk)'),
-          subtitle: const Text('Vem som helst med länken kan svara'),
-          value: FormTargetType.public,
-          groupValue: targetType,
-          onChanged: (v) => onTargetTypeChanged(v!),
-          contentPadding: EdgeInsets.zero,
-        ),
-        if (targetType == FormTargetType.group)
-          groupsAsync.when(
-            loading: () => const CircularProgressIndicator(),
-            error: (e, _) => Text('Fel: $e'),
-            data: (groups) => Column(
-              children: groups
-                  .map(
-                    (g) => CheckboxListTile(
-                      title: Text(g.name),
-                      subtitle: Text(g.description),
-                      value: selectedGroupIds.contains(g.id),
-                      onChanged: (_) => onGroupToggled(g.id),
-                      contentPadding: EdgeInsets.zero,
-                    ),
-                  )
-                  .toList(),
+        // Public toggle
+        Container(
+          decoration: BoxDecoration(
+            border: Border.all(
+              color: isPublic ? _kPrimaryRed : const Color(0xFFEEEEEE),
+              width: isPublic ? 2 : 1,
             ),
+            borderRadius: BorderRadius.circular(12),
+            color: isPublic ? const Color(0xFFFFF5F5) : Colors.white,
           ),
+          child: SwitchListTile(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+            title: const Text(
+              'Offentlig delbar länk',
+              style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+            ),
+            subtitle: const Text(
+              'Vem som helst med länken kan svara',
+              style: TextStyle(fontSize: 12),
+            ),
+            secondary: Icon(
+              Icons.link,
+              color: isPublic ? _kPrimaryRed : const Color(0xFF9E9E9E),
+            ),
+            value: isPublic,
+            activeThumbColor: _kPrimaryRed,
+            activeTrackColor: const Color(0xFFFFCDD2),
+            onChanged: onPublicChanged,
+            contentPadding: const EdgeInsets.fromLTRB(16, 4, 12, 4),
+          ),
+        ),
+        const SizedBox(height: 20),
+        const _Label('Skicka till grupper'),
+        const SizedBox(height: 4),
+        const Text(
+          'Välj en eller flera grupper — kan kombineras med länk ovan',
+          style: TextStyle(fontSize: 12, color: Color(0xFF9E9E9E)),
+        ),
+        const SizedBox(height: 10),
+        groupsAsync.when(
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (e, _) => Text('Fel: $e'),
+          data: (groups) => Column(
+            children: groups
+                .map(
+                  (g) => _GroupCheckItem(
+                    group: g,
+                    isChecked: selectedGroupIds.contains(g.id),
+                    onToggle: () => onGroupToggled(g.id),
+                  ),
+                )
+                .toList(),
+          ),
+        ),
       ],
     );
   }
 }
+
+class _GroupCheckItem extends StatelessWidget {
+  const _GroupCheckItem({
+    required this.group,
+    required this.isChecked,
+    required this.onToggle,
+  });
+
+  final GroupModel group;
+  final bool isChecked;
+  final VoidCallback onToggle;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onToggle,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
+        margin: const EdgeInsets.only(bottom: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: isChecked ? _kPrimaryRed : const Color(0xFFEEEEEE),
+            width: isChecked ? 2 : 1,
+          ),
+          color: isChecked ? const Color(0xFFFFF5F5) : Colors.white,
+        ),
+        child: Row(
+          children: [
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 150),
+              width: 22,
+              height: 22,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(5),
+                border: Border.all(
+                  color:
+                      isChecked ? _kPrimaryRed : const Color(0xFFCCCCCC),
+                  width: 2,
+                ),
+                color: isChecked ? _kPrimaryRed : Colors.white,
+              ),
+              child: isChecked
+                  ? const Icon(Icons.check, size: 14, color: Colors.white)
+                  : null,
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    group.name,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w500,
+                      fontSize: 14,
+                    ),
+                  ),
+                  if (group.description.isNotEmpty)
+                    Text(
+                      group.description,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: Color(0xFF9E9E9E),
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ── Step 3 ───────────────────────────────────────────────────────────────────
 
 class _Step3Questions extends StatelessWidget {
   const _Step3Questions({
@@ -359,8 +565,12 @@ class _Step3Questions extends StatelessWidget {
         const SizedBox(height: 8),
         OutlinedButton.icon(
           onPressed: onAdd,
-          icon: const Icon(Icons.add),
+          icon: const Icon(Icons.add, size: 18),
           label: const Text('Lägg till fråga'),
+          style: OutlinedButton.styleFrom(
+            foregroundColor: _kPrimaryRed,
+            side: const BorderSide(color: Color(0xFFFFCDD2)),
+          ),
         ),
       ],
     );
@@ -423,29 +633,40 @@ class _QuestionEditorState extends State<_QuestionEditor> {
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final needsOptions =
-        widget.question.type == QuestionType.multipleChoice ||
+    final needsOptions = widget.question.type == QuestionType.multipleChoice ||
         widget.question.type == QuestionType.singleChoice;
 
-    return Card(
+    return Container(
       margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: const Border.fromBorderSide(
+          BorderSide(color: Color(0xFFEEEEEE)),
+        ),
+      ),
       child: Padding(
-        padding: const EdgeInsets.all(12),
+        padding: const EdgeInsets.all(14),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               children: [
-                CircleAvatar(
-                  radius: 12,
-                  backgroundColor: cs.primaryContainer,
-                  child: Text(
-                    '${widget.index + 1}',
-                    style: TextStyle(
-                      fontSize: 11,
-                      color: cs.onPrimaryContainer,
-                      fontWeight: FontWeight.bold,
+                Container(
+                  width: 24,
+                  height: 24,
+                  decoration: const BoxDecoration(
+                    color: Color(0xFFFFF5F5),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Center(
+                    child: Text(
+                      '${widget.index + 1}',
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: _kPrimaryRed,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
                 ),
@@ -453,61 +674,35 @@ class _QuestionEditorState extends State<_QuestionEditor> {
                 IconButton(
                   icon: const Icon(Icons.delete_outline, size: 18),
                   onPressed: widget.onRemove,
-                  color: cs.error,
+                  color: const Color(0xFF9E9E9E),
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(
+                    minWidth: 32,
+                    minHeight: 32,
+                  ),
                 ),
               ],
             ),
-            const SizedBox(height: 8),
-            DropdownButtonFormField<QuestionType>(
-              decoration: const InputDecoration(
-                labelText: 'Frågetyp',
-                border: OutlineInputBorder(),
-                isDense: true,
-              ),
-              initialValue: widget.question.type,
-              items: const [
-                DropdownMenuItem(
-                  value: QuestionType.freeText,
-                  child: Text('Fritext'),
-                ),
-                DropdownMenuItem(
-                  value: QuestionType.multipleChoice,
-                  child: Text('Flerval'),
-                ),
-                DropdownMenuItem(
-                  value: QuestionType.singleChoice,
-                  child: Text('Enval'),
-                ),
-                DropdownMenuItem(
-                  value: QuestionType.rating,
-                  child: Text('Betyg (1–6)'),
-                ),
-                DropdownMenuItem(
-                  value: QuestionType.yesNo,
-                  child: Text('Ja / Nej'),
-                ),
-              ],
-              onChanged: (v) => _update(type: v),
+            const SizedBox(height: 10),
+            _QuestionTypeSelector(
+              selected: widget.question.type,
+              onChanged: (t) => _update(type: t),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 10),
             TextField(
               controller: _textController,
               decoration: const InputDecoration(
-                labelText: 'Frågetext *',
-                border: OutlineInputBorder(),
-                isDense: true,
+                hintText: 'Frågetext...',
               ),
               onChanged: (_) => _update(),
             ),
             if (needsOptions) ...[
-              const SizedBox(height: 8),
+              const SizedBox(height: 10),
               TextField(
                 controller: _optionsController,
                 decoration: const InputDecoration(
-                  labelText: 'Svarsalternativ (kommaseparerade)',
-                  border: OutlineInputBorder(),
-                  isDense: true,
                   hintText: 'Alternativ 1, Alternativ 2, ...',
+                  helperText: 'Kommaseparerade svarsalternativ',
                 ),
                 onChanged: (_) => _update(),
               ),
@@ -519,68 +714,143 @@ class _QuestionEditorState extends State<_QuestionEditor> {
   }
 }
 
+class _QuestionTypeSelector extends StatelessWidget {
+  const _QuestionTypeSelector({
+    required this.selected,
+    required this.onChanged,
+  });
+
+  final QuestionType selected;
+  final ValueChanged<QuestionType> onChanged;
+
+  static const _types = [
+    (QuestionType.freeText, 'Fritext'),
+    (QuestionType.singleChoice, 'Enval'),
+    (QuestionType.multipleChoice, 'Flerval'),
+    (QuestionType.rating, 'Betyg'),
+    (QuestionType.yesNo, 'Ja/Nej'),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    return Wrap(
+      spacing: 6,
+      runSpacing: 6,
+      children: _types.map(((QuestionType, String) entry) {
+        final (type, label) = entry;
+        final isSelected = selected == type;
+        return GestureDetector(
+          onTap: () => onChanged(type),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 120),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(8),
+              color: isSelected ? _kPrimaryRed : const Color(0xFFF5F5F5),
+            ),
+            child: Text(
+              label,
+              style: TextStyle(
+                fontSize: 12,
+                color: isSelected ? Colors.white : const Color(0xFF424242),
+                fontWeight:
+                    isSelected ? FontWeight.w600 : FontWeight.normal,
+              ),
+            ),
+          ),
+        );
+      }).toList(),
+    );
+  }
+}
+
+// ── Step 4 ───────────────────────────────────────────────────────────────────
+
 class _Step4Review extends ConsumerWidget {
   const _Step4Review({
     required this.title,
     required this.description,
-    required this.targetType,
+    required this.isPublic,
     required this.selectedGroupIds,
     required this.questions,
   });
 
   final String title;
   final String description;
-  final FormTargetType targetType;
+  final bool isPublic;
   final Set<String> selectedGroupIds;
   final List<QuestionModel> questions;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final groupsAsync = ref.watch(allGroupsProvider);
-    final cs = Theme.of(context).colorScheme;
+    final groups = ref.watch(allGroupsProvider).valueOrNull ?? <GroupModel>[];
 
-    String targetText;
-    if (targetType == FormTargetType.public) {
-      targetText = 'Allmän (delbar länk)';
-    } else {
-      final groups = groupsAsync.valueOrNull ?? <GroupModel>[];
+    final String targetText;
+    if (isPublic && selectedGroupIds.isNotEmpty) {
+      final names = groups
+          .where((g) => selectedGroupIds.contains(g.id))
+          .map((g) => g.name)
+          .join(', ');
+      targetText = 'Offentlig länk + $names';
+    } else if (isPublic) {
+      targetText = 'Offentlig delbar länk';
+    } else if (selectedGroupIds.isNotEmpty) {
       final names = groups
           .where((g) => selectedGroupIds.contains(g.id))
           .map((g) => g.name)
           .join(', ');
       targetText = names.isEmpty ? 'Ingen grupp vald' : names;
+    } else {
+      targetText = 'Ingen målgrupp vald';
     }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _ReviewRow(label: 'Titel', value: title),
-        _ReviewRow(label: 'Beskrivning', value: description),
+        _ReviewRow(label: 'Titel', value: title.isEmpty ? '(ingen)' : title),
+        _ReviewRow(
+          label: 'Beskrivning',
+          value: description.isEmpty ? '(ingen)' : description,
+        ),
         _ReviewRow(label: 'Målgrupp', value: targetText),
         _ReviewRow(label: 'Antal frågor', value: '${questions.length}'),
-        const SizedBox(height: 12),
-        Text(
-          'Frågor',
-          style: Theme.of(context).textTheme.labelMedium?.copyWith(
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        const SizedBox(height: 4),
+        const SizedBox(height: 16),
+        const _Label('Frågor'),
+        const SizedBox(height: 8),
         for (int i = 0; i < questions.length; i++)
           Padding(
-            padding: const EdgeInsets.only(bottom: 4),
+            padding: const EdgeInsets.only(bottom: 6),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  '${i + 1}. ',
-                  style: TextStyle(color: cs.primary),
+                Container(
+                  width: 22,
+                  height: 22,
+                  decoration: const BoxDecoration(
+                    color: Color(0xFFFFF5F5),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Center(
+                    child: Text(
+                      '${i + 1}',
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: _kPrimaryRed,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
                 ),
+                const SizedBox(width: 8),
                 Expanded(
-                  child: Text(
-                    questions[i].text.isEmpty
-                        ? '(ingen text)'
-                        : questions[i].text,
+                  child: Padding(
+                    padding: const EdgeInsets.only(top: 2),
+                    child: Text(
+                      questions[i].text.isEmpty
+                          ? '(ingen text)'
+                          : questions[i].text,
+                      style: const TextStyle(fontSize: 14),
+                    ),
                   ),
                 ),
               ],
@@ -600,28 +870,46 @@ class _ReviewRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Row(
+      padding: const EdgeInsets.only(bottom: 14),
+      child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          SizedBox(
-            width: 100,
-            child: Text(
-              '$label:',
-              style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
-              ),
+          Text(
+            label,
+            style: const TextStyle(
+              fontSize: 11,
+              color: Color(0xFF9E9E9E),
+              fontWeight: FontWeight.w500,
             ),
           ),
-          Expanded(
-            child: Text(
-              value,
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                fontWeight: FontWeight.w500,
-              ),
+          const SizedBox(height: 2),
+          Text(
+            value,
+            style: const TextStyle(
+              fontSize: 14,
+              color: Color(0xFF1A1A1A),
+              fontWeight: FontWeight.w500,
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _Label extends StatelessWidget {
+  const _Label(this.text);
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      text,
+      style: const TextStyle(
+        fontSize: 13,
+        fontWeight: FontWeight.w600,
+        color: Color(0xFF424242),
       ),
     );
   }

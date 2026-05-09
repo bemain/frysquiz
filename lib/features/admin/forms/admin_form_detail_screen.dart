@@ -7,6 +7,7 @@ import '../../../core/models/question_model.dart';
 import '../../../core/models/response_model.dart';
 import '../../../providers/form_provider.dart';
 import '../../../providers/response_provider.dart';
+import '../../../providers/service_providers.dart';
 
 class AdminFormDetailScreen extends ConsumerWidget {
   const AdminFormDetailScreen({super.key, required this.formId});
@@ -37,7 +38,7 @@ class AdminFormDetailScreen extends ConsumerWidget {
   }
 }
 
-class _FormDetailContent extends StatelessWidget {
+class _FormDetailContent extends ConsumerWidget {
   const _FormDetailContent({
     required this.form,
     required this.responsesAsync,
@@ -47,24 +48,40 @@ class _FormDetailContent extends StatelessWidget {
   final AsyncValue<List<ResponseModel>> responsesAsync;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final cs = Theme.of(context).colorScheme;
     final isSent = form.status == FormStatus.sent;
     final mockLink = 'https://frysquiz.se/fill/${form.id}';
+    final isPublicType = form.targetType == FormTargetType.public ||
+        form.targetType == FormTargetType.both;
 
     return Scaffold(
       appBar: AppBar(
         title: Text(form.title),
         actions: [
-          Chip(
-            label: Text(isSent ? 'Skickad' : 'Utkast'),
-            side: BorderSide.none,
-            backgroundColor:
-                isSent ? Colors.green.withAlpha(30) : Colors.orange.withAlpha(30),
-            labelStyle: TextStyle(
-              color: isSent ? Colors.green.shade700 : Colors.orange.shade800,
+          if (!isSent)
+            FilledButton.icon(
+              onPressed: () async {
+                final updated = form.copyWith(status: FormStatus.sent);
+                await ref.read(formServiceProvider).updateForm(updated);
+                ref.invalidate(formDetailProvider(form.id));
+                ref.invalidate(allFormsProvider);
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Enkäten är nu publicerad!')),
+                  );
+                }
+              },
+              icon: const Icon(Icons.send, size: 16),
+              label: const Text('Publicera'),
+            )
+          else
+            Chip(
+              label: const Text('Skickad'),
+              side: BorderSide.none,
+              backgroundColor: Colors.green.withAlpha(30),
+              labelStyle: TextStyle(color: Colors.green.shade700),
             ),
-          ),
           const SizedBox(width: 16),
         ],
       ),
@@ -80,7 +97,7 @@ class _FormDetailContent extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 16),
-            if (form.targetType == FormTargetType.public) ...[
+            if (isPublicType) ...[
               Card(
                 color: cs.primaryContainer,
                 child: Padding(

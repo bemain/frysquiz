@@ -5,6 +5,8 @@ import 'package:go_router/go_router.dart';
 import '../../core/models/user_model.dart';
 import '../../providers/auth_provider.dart';
 
+const _kPrimaryRed = Color(0xFFD32F2F);
+
 class AdminShell extends ConsumerWidget {
   const AdminShell({super.key, required this.child});
 
@@ -43,7 +45,9 @@ class AdminShell extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final user = ref.watch(authNotifierProvider).currentUser!;
+    final user = ref.watch(authNotifierProvider).currentUser;
+    if (user == null) return const Scaffold(body: SizedBox.shrink());
+
     final location = GoRouterState.of(context).matchedLocation;
 
     final visibleDestinations = _destinations
@@ -82,7 +86,10 @@ class AdminShell extends ConsumerWidget {
 
         return Scaffold(
           appBar: AppBar(
-            title: const Text('Frysquiz Admin'),
+            title: const Text(
+              'Frysquiz Admin',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
             actions: [
               IconButton(
                 icon: const Icon(Icons.logout),
@@ -167,57 +174,107 @@ class _SidebarContent extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final cs = Theme.of(context).colorScheme;
-
     return Material(
-      color: cs.surfaceContainer,
+      color: Colors.white,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const SizedBox(height: 48),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
+          // Red logo header
+          Container(
+            color: _kPrimaryRed,
+            padding: EdgeInsets.fromLTRB(
+              20,
+              MediaQuery.of(context).padding.top + 20,
+              20,
+              20,
+            ),
             child: Row(
               children: [
-                Icon(Icons.quiz_rounded, color: cs.primary, size: 28),
-                const SizedBox(width: 8),
-                Text(
+                Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withAlpha(25),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(
+                    Icons.quiz_rounded,
+                    color: Colors.white,
+                    size: 20,
+                  ),
+                ),
+                const SizedBox(width: 10),
+                const Text(
                   'Frysquiz',
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 18,
                     fontWeight: FontWeight.bold,
-                    color: cs.primary,
+                  ),
+                ),
+                const Spacer(),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 3,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withAlpha(30),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: const Text(
+                    'Admin',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ),
               ],
             ),
           ),
-          const SizedBox(height: 32),
+          const SizedBox(height: 12),
           Expanded(
             child: ListView.builder(
+              padding: const EdgeInsets.symmetric(horizontal: 12),
               itemCount: destinations.length,
               itemBuilder: (context, i) {
                 final item = destinations[i];
                 final isSelected = i == selectedIndex;
-                return Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 2,
+                return Container(
+                  margin: const EdgeInsets.only(bottom: 4),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(12),
+                    color: isSelected
+                        ? const Color(0xFFFFF5F5)
+                        : Colors.transparent,
                   ),
                   child: ListTile(
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    selected: isSelected,
-                    selectedTileColor: cs.primaryContainer,
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 2,
+                    ),
                     leading: Icon(
                       isSelected ? item.activeIcon : item.icon,
-                      color: isSelected ? cs.onPrimaryContainer : null,
+                      color: isSelected
+                          ? _kPrimaryRed
+                          : const Color(0xFF9E9E9E),
+                      size: 22,
                     ),
                     title: Text(
                       item.label,
                       style: TextStyle(
-                        color: isSelected ? cs.onPrimaryContainer : null,
-                        fontWeight: isSelected ? FontWeight.w600 : null,
+                        color: isSelected
+                            ? _kPrimaryRed
+                            : const Color(0xFF424242),
+                        fontWeight: isSelected
+                            ? FontWeight.w600
+                            : FontWeight.normal,
+                        fontSize: 14,
                       ),
                     ),
                     onTap: () => onTap(i),
@@ -231,28 +288,60 @@ class _SidebarContent extends ConsumerWidget {
             padding: const EdgeInsets.all(16),
             child: Row(
               children: [
-                CircleAvatar(
-                  radius: 16,
-                  backgroundColor: cs.primaryContainer,
-                  child: Text(
-                    user.name.split(' ').map((p) => p[0]).take(2).join(),
-                    style: TextStyle(
-                      color: cs.onPrimaryContainer,
-                      fontSize: 11,
-                      fontWeight: FontWeight.bold,
+                Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFFF5F5),
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: const Color(0xFFFFCDD2),
+                      width: 1.5,
+                    ),
+                  ),
+                  child: Center(
+                    child: Text(
+                      user.name.split(' ').map((p) => p[0]).take(2).join(),
+                      style: const TextStyle(
+                        color: _kPrimaryRed,
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: 10),
                 Expanded(
-                  child: Text(
-                    user.name.split(' ').first,
-                    style: Theme.of(context).textTheme.bodyMedium,
-                    overflow: TextOverflow.ellipsis,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        user.name.split(' ').first,
+                        style: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF1A1A1A),
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      Text(
+                        user.role == UserRole.superadmin
+                            ? 'Superadmin'
+                            : 'Admin',
+                        style: const TextStyle(
+                          fontSize: 11,
+                          color: Color(0xFF9E9E9E),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
                 IconButton(
-                  icon: const Icon(Icons.logout, size: 18),
+                  icon: const Icon(
+                    Icons.logout,
+                    size: 18,
+                    color: Color(0xFF9E9E9E),
+                  ),
                   onPressed: () => ref.read(authNotifierProvider).logout(),
                   tooltip: 'Logga ut',
                 ),

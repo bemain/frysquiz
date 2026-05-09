@@ -1,6 +1,6 @@
 import 'question_model.dart';
 
-enum FormTargetType { group, public }
+enum FormTargetType { group, public, both }
 
 enum FormStatus { draft, sent }
 

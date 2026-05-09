@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../core/models/form_model.dart';
 import '../../core/models/user_model.dart';
@@ -210,6 +211,7 @@ class _RecentFormTile extends ConsumerWidget {
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
       child: ListTile(
+        onTap: () => context.push('/admin/forms/${form.id}'),
         leading: CircleAvatar(
           backgroundColor: cs.secondaryContainer,
           child: Icon(Icons.assignment, color: cs.onSecondaryContainer),
