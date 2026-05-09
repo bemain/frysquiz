@@ -15,6 +15,22 @@ class UserModel {
   final UserRole role;
   final List<String> groupIds;
 
+  factory UserModel.fromJson(Map<String, dynamic> json) => UserModel(
+    id: json['id'] as String,
+    name: json['name'] as String,
+    email: json['email'] as String,
+    role: UserRole.values.byName(json['role'] as String),
+    groupIds: List<String>.from(json['group_ids'] as List? ?? []),
+  );
+
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'name': name,
+    'email': email,
+    'role': role.name,
+    'group_ids': groupIds,
+  };
+
   UserModel copyWith({
     String? id,
     String? name,

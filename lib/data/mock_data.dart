@@ -84,7 +84,7 @@ class MockData {
       title: 'Aktivitetsenkät 2025',
       description: 'Hjälp oss planera bättre aktiviteter för nästa termin.',
       createdBy: 'u2',
-      targetType: FormTargetType.group,
+      isPublic: false,
       targetGroupIds: ['g1'],
       status: FormStatus.draft,
       createdAt: DateTime(2025, 4, 10),
@@ -112,9 +112,10 @@ class MockData {
     FormModel(
       id: 'f2',
       title: 'Nöjdhetsmätning Ungdomar',
-      description: 'En kort enkät om din upplevelse av fritidsgårdens verksamhet.',
+      description:
+          'En kort enkät om din upplevelse av fritidsgårdens verksamhet.',
       createdBy: 'u2',
-      targetType: FormTargetType.group,
+      isPublic: false,
       targetGroupIds: ['g1'],
       status: FormStatus.sent,
       createdAt: DateTime(2025, 3, 15),
@@ -123,7 +124,12 @@ class MockData {
           id: 'q4',
           type: QuestionType.singleChoice,
           text: 'Hur ofta deltar du i aktiviteter på fritidsgården?',
-          options: ['Varje vecka', 'Varannan vecka', 'En gång i månaden', 'Mer sällan'],
+          options: [
+            'Varje vecka',
+            'Varannan vecka',
+            'En gång i månaden',
+            'Mer sällan',
+          ],
         ),
         QuestionModel(
           id: 'q5',
@@ -149,7 +155,7 @@ class MockData {
       title: 'Allmän Feedback',
       description: 'Vi vill gärna höra vad du tycker om fritidsgården.',
       createdBy: 'u3',
-      targetType: FormTargetType.public,
+      isPublic: true,
       targetGroupIds: [],
       status: FormStatus.sent,
       createdAt: DateTime(2025, 2, 28),
@@ -185,7 +191,10 @@ class MockData {
         AnswerModel(questionId: 'q4', selectedOptions: ['Varje vecka']),
         AnswerModel(questionId: 'q5', ratingValue: 5),
         AnswerModel(questionId: 'q6', yesNoValue: true),
-        AnswerModel(questionId: 'q7', textValue: 'Mer utrymme för musik vore kul!'),
+        AnswerModel(
+          questionId: 'q7',
+          textValue: 'Mer utrymme för musik vore kul!',
+        ),
       ],
     ),
     ResponseModel(
@@ -208,7 +217,10 @@ class MockData {
       answers: [
         AnswerModel(questionId: 'q8', ratingValue: 4),
         AnswerModel(questionId: 'q9', yesNoValue: true),
-        AnswerModel(questionId: 'q10', textValue: 'Längre öppettider på helger skulle vara toppen.'),
+        AnswerModel(
+          questionId: 'q10',
+          textValue: 'Längre öppettider på helger skulle vara toppen.',
+        ),
       ],
     ),
   ];

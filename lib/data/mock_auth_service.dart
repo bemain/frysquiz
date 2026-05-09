@@ -4,6 +4,9 @@ import 'mock_data.dart';
 
 class MockAuthService implements AuthService {
   @override
+  Future<UserModel?> getCurrentUser() async => null;
+
+  @override
   Future<UserModel?> login(String email, String password) async {
     await Future.delayed(const Duration(milliseconds: 400));
     final expectedPassword = MockData.credentials[email.toLowerCase()];

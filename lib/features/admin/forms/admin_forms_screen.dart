@@ -29,7 +29,9 @@ class AdminFormsScreen extends ConsumerWidget {
         error: (e, _) => Center(child: Text('Fel: $e')),
         data: (forms) {
           final sent = forms.where((f) => f.status == FormStatus.sent).toList();
-          final draft = forms.where((f) => f.status == FormStatus.draft).toList();
+          final draft = forms
+              .where((f) => f.status == FormStatus.draft)
+              .toList();
 
           return ListView(
             padding: const EdgeInsets.all(16),
@@ -72,17 +74,14 @@ class _SectionLabel extends StatelessWidget {
         Container(
           width: 12,
           height: 12,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: color,
-          ),
+          decoration: BoxDecoration(shape: BoxShape.circle, color: color),
         ),
         const SizedBox(width: 8),
         Text(
           title,
-          style: Theme.of(context).textTheme.titleSmall?.copyWith(
-            fontWeight: FontWeight.bold,
-          ),
+          style: Theme.of(
+            context,
+          ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
         ),
       ],
     );
@@ -123,8 +122,7 @@ class _FormCard extends StatelessWidget {
                   children: [
                     Text(
                       form.title,
-                      style:
-                          Theme.of(context).textTheme.titleSmall?.copyWith(
+                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
                         fontWeight: FontWeight.w600,
                       ),
                     ),
@@ -148,31 +146,22 @@ class _FormCard extends StatelessWidget {
                         const SizedBox(width: 4),
                         Text(
                           '${form.questions.length} frågor',
-                          style:
-                              Theme.of(context).textTheme.labelSmall?.copyWith(
-                            color: cs.onSurfaceVariant,
-                          ),
+                          style: Theme.of(context).textTheme.labelSmall
+                              ?.copyWith(color: cs.onSurfaceVariant),
                         ),
                         const SizedBox(width: 12),
                         Icon(
-                          form.targetType == FormTargetType.public
-                              ? Icons.public
-                              : Icons.group_outlined,
+                          form.isPublic ? Icons.public : Icons.group_outlined,
                           size: 12,
                           color: cs.onSurfaceVariant,
                         ),
                         const SizedBox(width: 4),
                         Text(
-                          switch (form.targetType) {
-                            FormTargetType.public => 'Allmän',
-                            FormTargetType.both => 'Allmän + grupper',
-                            FormTargetType.group =>
-                              '${form.targetGroupIds.length} grupp(er)',
-                          },
-                          style:
-                              Theme.of(context).textTheme.labelSmall?.copyWith(
-                            color: cs.onSurfaceVariant,
-                          ),
+                          form.isPublic
+                              ? 'Allmän'
+                              : '${form.targetGroupIds.length} grupp(er)',
+                          style: Theme.of(context).textTheme.labelSmall
+                              ?.copyWith(color: cs.onSurfaceVariant),
                         ),
                       ],
                     ),

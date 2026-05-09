@@ -58,18 +58,13 @@ class _CreateFormScreenState extends ConsumerState<CreateFormScreen> {
 
   Future<void> _save(FormStatus status) async {
     final user = ref.read(authNotifierProvider).currentUser!;
-    final targetType = _isPublic && _selectedGroupIds.isNotEmpty
-        ? FormTargetType.both
-        : _isPublic
-            ? FormTargetType.public
-            : FormTargetType.group;
 
     final form = FormModel(
       id: 'f_${DateTime.now().millisecondsSinceEpoch}',
       title: _titleController.text.trim(),
       description: _descController.text.trim(),
       createdBy: user.id,
-      targetType: targetType,
+      isPublic: _isPublic,
       targetGroupIds: _selectedGroupIds.toList(),
       status: status,
       createdAt: DateTime.now(),
@@ -84,11 +79,13 @@ class _CreateFormScreenState extends ConsumerState<CreateFormScreen> {
   void _addQuestion() {
     setState(() {
       _questionCounter++;
-      _questions.add(QuestionModel(
-        id: 'new_q$_questionCounter',
-        type: QuestionType.freeText,
-        text: '',
-      ));
+      _questions.add(
+        QuestionModel(
+          id: 'new_q$_questionCounter',
+          type: QuestionType.freeText,
+          text: '',
+        ),
+      );
     });
   }
 
@@ -242,8 +239,7 @@ class _StepDot extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.bold,
-                      color:
-                          isCurrent ? Colors.white : const Color(0xFF9E9E9E),
+                      color: isCurrent ? Colors.white : const Color(0xFF9E9E9E),
                     ),
                   ),
           ),
@@ -297,10 +293,7 @@ class _BottomNav extends StatelessWidget {
       child: Row(
         children: [
           if (onBack != null) ...[
-            OutlinedButton(
-              onPressed: onBack,
-              child: const Text('Tillbaka'),
-            ),
+            OutlinedButton(onPressed: onBack, child: const Text('Tillbaka')),
             const SizedBox(width: 12),
           ],
           if (isLastStep) ...[
@@ -493,8 +486,7 @@ class _GroupCheckItem extends StatelessWidget {
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(5),
                 border: Border.all(
-                  color:
-                      isChecked ? _kPrimaryRed : const Color(0xFFCCCCCC),
+                  color: isChecked ? _kPrimaryRed : const Color(0xFFCCCCCC),
                   width: 2,
                 ),
                 color: isChecked ? _kPrimaryRed : Colors.white,
@@ -621,19 +613,23 @@ class _QuestionEditorState extends State<_QuestionEditor> {
         .map((o) => o.trim())
         .where((o) => o.isNotEmpty)
         .toList();
-    widget.onUpdate(widget.question.copyWith(
-      type: newType,
-      text: _textController.text,
-      options: (newType == QuestionType.multipleChoice ||
-              newType == QuestionType.singleChoice)
-          ? optionsList
-          : [],
-    ));
+    widget.onUpdate(
+      widget.question.copyWith(
+        type: newType,
+        text: _textController.text,
+        options:
+            (newType == QuestionType.multipleChoice ||
+                newType == QuestionType.singleChoice)
+            ? optionsList
+            : [],
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    final needsOptions = widget.question.type == QuestionType.multipleChoice ||
+    final needsOptions =
+        widget.question.type == QuestionType.multipleChoice ||
         widget.question.type == QuestionType.singleChoice;
 
     return Container(
@@ -691,9 +687,7 @@ class _QuestionEditorState extends State<_QuestionEditor> {
             const SizedBox(height: 10),
             TextField(
               controller: _textController,
-              decoration: const InputDecoration(
-                hintText: 'Frågetext...',
-              ),
+              decoration: const InputDecoration(hintText: 'Frågetext...'),
               onChanged: (_) => _update(),
             ),
             if (needsOptions) ...[
@@ -753,8 +747,7 @@ class _QuestionTypeSelector extends StatelessWidget {
               style: TextStyle(
                 fontSize: 12,
                 color: isSelected ? Colors.white : const Color(0xFF424242),
-                fontWeight:
-                    isSelected ? FontWeight.w600 : FontWeight.normal,
+                fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
               ),
             ),
           ),

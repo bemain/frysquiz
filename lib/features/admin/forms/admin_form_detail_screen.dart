@@ -29,20 +29,14 @@ class AdminFormDetailScreen extends ConsumerWidget {
             body: Center(child: Text('Enkäten hittades inte.')),
           );
         }
-        return _FormDetailContent(
-          form: form,
-          responsesAsync: responsesAsync,
-        );
+        return _FormDetailContent(form: form, responsesAsync: responsesAsync);
       },
     );
   }
 }
 
 class _FormDetailContent extends ConsumerWidget {
-  const _FormDetailContent({
-    required this.form,
-    required this.responsesAsync,
-  });
+  const _FormDetailContent({required this.form, required this.responsesAsync});
 
   final FormModel form;
   final AsyncValue<List<ResponseModel>> responsesAsync;
@@ -52,8 +46,6 @@ class _FormDetailContent extends ConsumerWidget {
     final cs = Theme.of(context).colorScheme;
     final isSent = form.status == FormStatus.sent;
     final mockLink = 'https://frysquiz.se/fill/${form.id}';
-    final isPublicType = form.targetType == FormTargetType.public ||
-        form.targetType == FormTargetType.both;
 
     return Scaffold(
       appBar: AppBar(
@@ -92,12 +84,12 @@ class _FormDetailContent extends ConsumerWidget {
           children: [
             Text(
               form.description,
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: cs.onSurfaceVariant,
-              ),
+              style: Theme.of(
+                context,
+              ).textTheme.bodyMedium?.copyWith(color: cs.onSurfaceVariant),
             ),
             const SizedBox(height: 16),
-            if (isPublicType) ...[
+            if (form.isPublic) ...[
               Card(
                 color: cs.primaryContainer,
                 child: Padding(
@@ -139,10 +131,8 @@ class _FormDetailContent extends ConsumerWidget {
             responsesAsync.when(
               loading: () => const Center(child: CircularProgressIndicator()),
               error: (e, _) => Text('Kunde inte ladda svar: $e'),
-              data: (responses) => _ResponsesSummary(
-                form: form,
-                responses: responses,
-              ),
+              data: (responses) =>
+                  _ResponsesSummary(form: form, responses: responses),
             ),
           ],
         ),
@@ -164,9 +154,9 @@ class _ResponsesSummary extends StatelessWidget {
       children: [
         Text(
           'Svar (${responses.length})',
-          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-            fontWeight: FontWeight.bold,
-          ),
+          style: Theme.of(
+            context,
+          ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 16),
         if (responses.isEmpty)
@@ -178,20 +168,14 @@ class _ResponsesSummary extends StatelessWidget {
           )
         else
           for (final question in form.questions)
-            _QuestionSummaryCard(
-              question: question,
-              responses: responses,
-            ),
+            _QuestionSummaryCard(question: question, responses: responses),
       ],
     );
   }
 }
 
 class _QuestionSummaryCard extends StatelessWidget {
-  const _QuestionSummaryCard({
-    required this.question,
-    required this.responses,
-  });
+  const _QuestionSummaryCard({required this.question, required this.responses});
 
   final QuestionModel question;
   final List<ResponseModel> responses;
@@ -213,16 +197,12 @@ class _QuestionSummaryCard extends StatelessWidget {
           children: [
             Text(
               question.text,
-              style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                fontWeight: FontWeight.w600,
-              ),
+              style: Theme.of(
+                context,
+              ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
             ),
             const SizedBox(height: 12),
-            _AnswerSummary(
-              question: question,
-              answers: answers,
-              cs: cs,
-            ),
+            _AnswerSummary(question: question, answers: answers, cs: cs),
           ],
         ),
       ),
@@ -244,10 +224,7 @@ class _AnswerSummary extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (answers.isEmpty) {
-      return Text(
-        'Inget svar',
-        style: TextStyle(color: cs.onSurfaceVariant),
-      );
+      return Text('Inget svar', style: TextStyle(color: cs.onSurfaceVariant));
     }
 
     return switch (question.type) {
@@ -270,12 +247,8 @@ class _AnswerSummary extends StatelessWidget {
             )
             .toList(),
       ),
-      QuestionType.multipleChoice ||
-      QuestionType.singleChoice => _ChoiceSummary(
-        question: question,
-        answers: answers,
-        cs: cs,
-      ),
+      QuestionType.multipleChoice || QuestionType.singleChoice =>
+        _ChoiceSummary(question: question, answers: answers, cs: cs),
       QuestionType.rating => _RatingSummary(
         question: question,
         answers: answers,
@@ -369,7 +342,9 @@ class _RatingSummary extends StatelessWidget {
     for (var v = question.ratingMin; v <= question.ratingMax; v++) {
       counts[v] = values.where((val) => val == v).length;
     }
-    final maxCount = counts.values.isEmpty ? 1 : counts.values.reduce((a, b) => a > b ? a : b);
+    final maxCount = counts.values.isEmpty
+        ? 1
+        : counts.values.reduce((a, b) => a > b ? a : b);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -385,39 +360,35 @@ class _RatingSummary extends StatelessWidget {
         Row(
           crossAxisAlignment: CrossAxisAlignment.end,
           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-          children: List.generate(
-            question.ratingMax - question.ratingMin + 1,
-            (i) {
-              final val = question.ratingMin + i;
-              final count = counts[val] ?? 0;
-              final fraction = maxCount == 0 ? 0.0 : count / maxCount;
-              return Column(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  Text(
-                    '$count',
-                    style: Theme.of(context).textTheme.labelSmall,
+          children: List.generate(question.ratingMax - question.ratingMin + 1, (
+            i,
+          ) {
+            final val = question.ratingMin + i;
+            final count = counts[val] ?? 0;
+            final fraction = maxCount == 0 ? 0.0 : count / maxCount;
+            return Column(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                Text('$count', style: Theme.of(context).textTheme.labelSmall),
+                const SizedBox(height: 2),
+                Container(
+                  width: 28,
+                  height: (fraction * 60).clamp(4.0, 60.0),
+                  decoration: BoxDecoration(
+                    color: cs.primary.withAlpha((fraction * 255).round()),
+                    borderRadius: BorderRadius.circular(4),
                   ),
-                  const SizedBox(height: 2),
-                  Container(
-                    width: 28,
-                    height: (fraction * 60).clamp(4.0, 60.0),
-                    decoration: BoxDecoration(
-                      color: cs.primary.withAlpha((fraction * 255).round()),
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    '$val',
-                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ],
-              );
-            },
-          ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  '$val',
+                  style: Theme.of(
+                    context,
+                  ).textTheme.labelSmall?.copyWith(fontWeight: FontWeight.bold),
+                ),
+              ],
+            );
+          }),
         ),
       ],
     );
@@ -438,19 +409,9 @@ class _YesNoSummary extends StatelessWidget {
 
     return Row(
       children: [
-        _YesNoBar(
-          label: 'Ja',
-          count: yes,
-          total: total,
-          color: Colors.green,
-        ),
+        _YesNoBar(label: 'Ja', count: yes, total: total, color: Colors.green),
         const SizedBox(width: 16),
-        _YesNoBar(
-          label: 'Nej',
-          count: no,
-          total: total,
-          color: Colors.red,
-        ),
+        _YesNoBar(label: 'Nej', count: no, total: total, color: Colors.red),
       ],
     );
   }

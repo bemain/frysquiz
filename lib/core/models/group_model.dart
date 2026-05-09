@@ -15,6 +15,24 @@ class GroupModel {
   final List<String> memberIds;
   final List<String> adminIds;
 
+  factory GroupModel.fromJson(Map<String, dynamic> json) => GroupModel(
+    id: json['id'] as String,
+    name: json['name'] as String,
+    description: json['description'] as String,
+    isOpen: json['is_open'] as bool,
+    memberIds: List<String>.from(json['user_ids'] as List? ?? []),
+    adminIds: List<String>.from(json['admin_ids'] as List? ?? []),
+  );
+
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'name': name,
+    'description': description,
+    'is_open': isOpen,
+    'member_ids': memberIds,
+    'admin_ids': adminIds,
+  };
+
   GroupModel copyWith({
     String? id,
     String? name,

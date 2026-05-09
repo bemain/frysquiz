@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/models/user_model.dart';
+import '../data/supabase_auth_service.dart';
 import 'service_providers.dart';
 
 class AuthNotifier extends ChangeNotifier {
@@ -17,15 +18,24 @@ class AuthNotifier extends ChangeNotifier {
   bool get isLoading => _isLoading;
   String? get error => _error;
 
+  Future<void> restoreSession() async {
+    final svc = _ref.read(authServiceProvider);
+    if (svc is SupabaseAuthService) {
+      final user = await svc.getCurrentUser();
+      if (user != null) {
+        _currentUser = user;
+        notifyListeners();
+      }
+    }
+  }
+
   Future<bool> login(String email, String password) async {
     _isLoading = true;
     _error = null;
     notifyListeners();
 
     try {
-      final user = await _ref
-          .read(authServiceProvider)
-          .login(email, password);
+      final user = await _ref.read(authServiceProvider).login(email, password);
       if (user == null) {
         _error = 'Fel e-post eller lösenord.';
         _isLoading = false;

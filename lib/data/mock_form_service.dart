@@ -19,8 +19,7 @@ class MockFormService implements FormService {
     await Future.delayed(const Duration(milliseconds: 200));
     return _forms.where((f) {
       if (f.status != FormStatus.sent) return false;
-      if (f.targetType == FormTargetType.public ||
-          f.targetType == FormTargetType.both) {
+      if (f.isPublic) {
         return true;
       }
       return f.targetGroupIds.any((gid) => groupIds.contains(gid));

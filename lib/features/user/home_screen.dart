@@ -41,11 +41,7 @@ class HomeScreen extends ConsumerWidget {
           data: (groups) => _HomeLayout(
             firstName: user.name.split(' ').first,
             formCount: forms.length,
-            child: _FormFeed(
-              forms: forms,
-              groups: groups,
-              userId: user.id,
-            ),
+            child: _FormFeed(forms: forms, groups: groups, userId: user.id),
           ),
         ),
       ),
@@ -94,8 +90,8 @@ class _HomeLayout extends StatelessWidget {
                           formCount == null
                               ? 'Laddar...'
                               : formCount == 0
-                                  ? 'Inga enkäter just nu'
-                                  : '$formCount enkät${formCount == 1 ? '' : 'er'} tillgängliga',
+                              ? 'Inga enkäter just nu'
+                              : '$formCount enkät${formCount == 1 ? '' : 'er'} tillgängliga',
                           style: TextStyle(
                             fontSize: 14,
                             color: Colors.white.withAlpha(200),
@@ -130,7 +126,9 @@ class _HomeLayout extends StatelessWidget {
             ),
             transform: Matrix4.translationValues(0, -20, 0),
             child: ClipRRect(
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(20),
+              ),
               child: child,
             ),
           ),
@@ -206,20 +204,18 @@ class _FormFeed extends ConsumerWidget {
   }
 
   String _groupName(FormModel form, List<GroupModel> groups) {
-    return switch (form.targetType) {
-      FormTargetType.public => 'Allmän',
-      FormTargetType.both => 'Allmän + grupper',
-      FormTargetType.group => () {
-        if (form.targetGroupIds.isEmpty) return '';
-        try {
-          return groups
-              .firstWhere((g) => g.id == form.targetGroupIds.first)
-              .name;
-        } on StateError {
-          return '';
-        }
-      }(),
-    };
+    return form.isPublic
+        ? 'Allmän'
+        : () {
+            if (form.targetGroupIds.isEmpty) return '';
+            try {
+              return groups
+                  .firstWhere((g) => g.id == form.targetGroupIds.first)
+                  .name;
+            } on StateError {
+              return '';
+            }
+          }();
   }
 }
 
@@ -262,39 +258,39 @@ class _FormCard extends ConsumerWidget {
                   ),
                   const SizedBox(width: 8),
                   responseAsync.whenOrNull(
-                    data: (r) => r != null
-                        ? Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 4,
-                            ),
-                            decoration: BoxDecoration(
-                              color: Colors.green.withAlpha(20),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: const Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(
-                                  Icons.check_circle,
-                                  size: 12,
-                                  color: Colors.green,
+                        data: (r) => r != null
+                            ? Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 4,
                                 ),
-                                SizedBox(width: 4),
-                                Text(
-                                  'Besvarad',
-                                  style: TextStyle(
-                                    fontSize: 11,
-                                    color: Colors.green,
-                                    fontWeight: FontWeight.w600,
-                                  ),
+                                decoration: BoxDecoration(
+                                  color: Colors.green.withAlpha(20),
+                                  borderRadius: BorderRadius.circular(8),
                                 ),
-                              ],
-                            ),
-                          )
-                        : null,
-                  ) ??
-                  const SizedBox.shrink(),
+                                child: const Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(
+                                      Icons.check_circle,
+                                      size: 12,
+                                      color: Colors.green,
+                                    ),
+                                    SizedBox(width: 4),
+                                    Text(
+                                      'Besvarad',
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        color: Colors.green,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              )
+                            : null,
+                      ) ??
+                      const SizedBox.shrink(),
                 ],
               ),
               const SizedBox(height: 6),
@@ -312,10 +308,7 @@ class _FormCard extends ConsumerWidget {
               Row(
                 children: [
                   if (groupName.isNotEmpty) ...[
-                    _MetaChip(
-                      icon: Icons.group_outlined,
-                      label: groupName,
-                    ),
+                    _MetaChip(icon: Icons.group_outlined, label: groupName),
                     const SizedBox(width: 8),
                   ],
                   _MetaChip(
