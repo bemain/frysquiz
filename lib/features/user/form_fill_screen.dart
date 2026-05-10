@@ -7,6 +7,7 @@ import '../../core/models/question_model.dart';
 import '../../core/models/response_model.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/form_provider.dart';
+import '../../providers/response_provider.dart';
 import '../../providers/service_providers.dart';
 
 const _kPrimaryRed = Color(0xFFD32F2F);
@@ -18,7 +19,13 @@ class FormFillScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final user = ref.watch(authNotifierProvider).currentUser;
     final formAsync = ref.watch(formDetailProvider(formId));
+    // Always watch with a stable key — empty userId returns null from service
+    final responseAsync = ref.watch(
+      userResponseProvider((formId, user?.id ?? '')),
+    );
+
     return formAsync.when(
       loading: () => const Scaffold(
         body: Center(child: CircularProgressIndicator()),
@@ -30,8 +37,91 @@ class FormFillScreen extends ConsumerWidget {
             body: Center(child: Text('Enkäten hittades inte.')),
           );
         }
+        if (user != null) {
+          return responseAsync.when(
+            loading: () => const Scaffold(
+              body: Center(child: CircularProgressIndicator()),
+            ),
+            error: (_, _) => FormFillContent(form: form, isPublic: false),
+            data: (existing) => existing != null
+                ? _AlreadyAnsweredScreen(form: form)
+                : FormFillContent(form: form, isPublic: false),
+          );
+        }
         return FormFillContent(form: form, isPublic: false);
       },
+    );
+  }
+}
+
+class _AlreadyAnsweredScreen extends StatelessWidget {
+  const _AlreadyAnsweredScreen({required this.form});
+
+  final FormModel form;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.white,
+      appBar: AppBar(
+        title: Text(form.title),
+        leading: IconButton(
+          icon: const Icon(Icons.close),
+          onPressed: () => context.pop(),
+        ),
+      ),
+      body: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(32),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 88,
+                height: 88,
+                decoration: BoxDecoration(
+                  color: Colors.green.withAlpha(20),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.check_circle_outline,
+                  size: 48,
+                  color: Colors.green,
+                ),
+              ),
+              const SizedBox(height: 24),
+              const Text(
+                'Du har redan svarat',
+                style: TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF1A1A1A),
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 10),
+              Text(
+                'Du har redan skickat in ditt svar på "${form.title}".',
+                style: const TextStyle(
+                  fontSize: 15,
+                  color: Color(0xFF757575),
+                  height: 1.4,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 32),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton.icon(
+                  onPressed: () => context.go('/home'),
+                  icon: const Icon(Icons.home),
+                  label: const Text('Tillbaka till startsidan'),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
@@ -77,7 +167,10 @@ class FormFillContentState extends ConsumerState<FormFillContent> {
       submittedAt: DateTime.now(),
     );
     await ref.read(responseServiceProvider).submitResponse(response);
-    if (mounted) setState(() => _submitted = true);
+    if (!mounted) return;
+    // Invalidate so the already-answered guard reflects the new submission
+    ref.invalidate(userResponseProvider((widget.form.id, user?.id ?? '')));
+    setState(() => _submitted = true);
   }
 
   @override

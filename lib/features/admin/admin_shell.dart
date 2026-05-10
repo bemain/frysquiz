@@ -179,14 +179,13 @@ class _SidebarContent extends ConsumerWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // Red logo header
-          Container(
-            color: _kPrimaryRed,
+          // Logo header
+          Padding(
             padding: EdgeInsets.fromLTRB(
               20,
               MediaQuery.of(context).padding.top + 20,
               20,
-              20,
+              16,
             ),
             child: Row(
               children: [
@@ -194,12 +193,13 @@ class _SidebarContent extends ConsumerWidget {
                   width: 36,
                   height: 36,
                   decoration: BoxDecoration(
-                    color: Colors.white.withAlpha(25),
+                    color: const Color(0xFFFFF5F5),
                     borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: const Color(0xFFFFCDD2)),
                   ),
                   child: const Icon(
                     Icons.quiz_rounded,
-                    color: Colors.white,
+                    color: _kPrimaryRed,
                     size: 20,
                   ),
                 ),
@@ -207,7 +207,7 @@ class _SidebarContent extends ConsumerWidget {
                 const Text(
                   'Frysquiz',
                   style: TextStyle(
-                    color: Colors.white,
+                    color: Color(0xFF1A1A1A),
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
                   ),
@@ -219,13 +219,14 @@ class _SidebarContent extends ConsumerWidget {
                     vertical: 3,
                   ),
                   decoration: BoxDecoration(
-                    color: Colors.white.withAlpha(30),
+                    color: const Color(0xFFFFF5F5),
                     borderRadius: BorderRadius.circular(6),
+                    border: Border.all(color: const Color(0xFFFFCDD2)),
                   ),
                   child: const Text(
                     'Admin',
                     style: TextStyle(
-                      color: Colors.white,
+                      color: _kPrimaryRed,
                       fontSize: 11,
                       fontWeight: FontWeight.w600,
                     ),
@@ -234,6 +235,7 @@ class _SidebarContent extends ConsumerWidget {
               ],
             ),
           ),
+          const Divider(height: 1),
           const SizedBox(height: 12),
           Expanded(
             child: ListView.builder(

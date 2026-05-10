@@ -588,49 +588,67 @@ class _QuestionEditor extends StatefulWidget {
 
 class _QuestionEditorState extends State<_QuestionEditor> {
   late final TextEditingController _textController;
-  late final TextEditingController _optionsController;
+  late final List<TextEditingController> _optControllers;
 
   @override
   void initState() {
     super.initState();
     _textController = TextEditingController(text: widget.question.text);
-    _optionsController = TextEditingController(
-      text: widget.question.options.join(', '),
-    );
+    _optControllers = widget.question.options
+        .map((o) => TextEditingController(text: o))
+        .toList();
+    // Ensure at least one option field when starting with a choice type
+    if (_optControllers.isEmpty && _needsOptions(widget.question.type)) {
+      _optControllers.add(TextEditingController());
+    }
   }
 
   @override
   void dispose() {
     _textController.dispose();
-    _optionsController.dispose();
+    for (final c in _optControllers) {
+      c.dispose();
+    }
     super.dispose();
+  }
+
+  bool _needsOptions(QuestionType t) =>
+      t == QuestionType.multipleChoice || t == QuestionType.singleChoice;
+
+  void _addOption() {
+    setState(() => _optControllers.add(TextEditingController()));
+  }
+
+  void _removeOption(int index) {
+    final removed = _optControllers.removeAt(index);
+    removed.dispose();
+    setState(() {});
+    _update();
   }
 
   void _update({QuestionType? type}) {
     final newType = type ?? widget.question.type;
-    final optionsList = _optionsController.text
-        .split(',')
-        .map((o) => o.trim())
-        .where((o) => o.isNotEmpty)
-        .toList();
+    if (_needsOptions(newType) && _optControllers.isEmpty) {
+      setState(() => _optControllers.add(TextEditingController()));
+    }
+    final opts = _needsOptions(newType)
+        ? _optControllers
+              .map((c) => c.text.trim())
+              .where((o) => o.isNotEmpty)
+              .toList()
+        : <String>[];
     widget.onUpdate(
       widget.question.copyWith(
         type: newType,
         text: _textController.text,
-        options:
-            (newType == QuestionType.multipleChoice ||
-                newType == QuestionType.singleChoice)
-            ? optionsList
-            : [],
+        options: opts,
       ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    final needsOptions =
-        widget.question.type == QuestionType.multipleChoice ||
-        widget.question.type == QuestionType.singleChoice;
+    final needsOptions = _needsOptions(widget.question.type);
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -691,14 +709,63 @@ class _QuestionEditorState extends State<_QuestionEditor> {
               onChanged: (_) => _update(),
             ),
             if (needsOptions) ...[
-              const SizedBox(height: 10),
-              TextField(
-                controller: _optionsController,
-                decoration: const InputDecoration(
-                  hintText: 'Alternativ 1, Alternativ 2, ...',
-                  helperText: 'Kommaseparerade svarsalternativ',
+              const SizedBox(height: 12),
+              for (int i = 0; i < _optControllers.length; i++)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 28,
+                        height: 28,
+                        margin: const EdgeInsets.only(right: 8),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF5F5F5),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Center(
+                          child: Text(
+                            '${i + 1}',
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: Color(0xFF757575),
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                      ),
+                      Expanded(
+                        child: TextField(
+                          controller: _optControllers[i],
+                          decoration: InputDecoration(
+                            hintText: 'Alternativ ${i + 1}',
+                          ),
+                          onChanged: (_) => _update(),
+                        ),
+                      ),
+                      if (_optControllers.length > 1)
+                        IconButton(
+                          icon: const Icon(Icons.close, size: 18),
+                          onPressed: () => _removeOption(i),
+                          color: const Color(0xFF9E9E9E),
+                          padding: const EdgeInsets.only(left: 8),
+                          constraints: const BoxConstraints(
+                            minWidth: 36,
+                            minHeight: 36,
+                          ),
+                        ),
+                    ],
+                  ),
                 ),
-                onChanged: (_) => _update(),
+              TextButton.icon(
+                onPressed: _addOption,
+                icon: const Icon(Icons.add, size: 16),
+                label: const Text('Lägg till alternativ'),
+                style: TextButton.styleFrom(
+                  foregroundColor: _kPrimaryRed,
+                  padding: EdgeInsets.zero,
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
               ),
             ],
           ],

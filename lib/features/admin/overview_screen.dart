@@ -61,14 +61,14 @@ class _OverviewContent extends ConsumerWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Hej, ${user.name.split(' ').first}!',
+            'Hej, ${user.name.split(' ').first}! \u{1F44B}',
             style: Theme.of(context).textTheme.headlineSmall?.copyWith(
               fontWeight: FontWeight.bold,
             ),
           ),
           const SizedBox(height: 4),
           Text(
-            'Här är en översikt av din verksamhet.',
+            'Här är en snabb översikt av er verksamhet.',
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
               color: Theme.of(context).colorScheme.onSurfaceVariant,
             ),
@@ -113,40 +113,46 @@ class _StatsGrid extends ConsumerWidget {
         : ref.watch(formResponsesProvider(sentForms.first.id));
 
     final responsesCount = allResponsesAsync?.valueOrNull?.length ?? 0;
+    final latestFormTitle =
+        sentForms.isNotEmpty ? sentForms.first.title : 'enkäten';
 
-    return GridView.count(
-      crossAxisCount: 2,
-      crossAxisSpacing: 12,
-      mainAxisSpacing: 12,
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      childAspectRatio: 1.6,
-      children: [
-        _StatCard(
-          title: 'Grupper',
-          value: '${groups.length}',
-          icon: Icons.group,
-          color: Colors.blue,
-        ),
-        _StatCard(
-          title: 'Skickade enkäter',
-          value: '${sentForms.length}',
-          icon: Icons.send,
-          color: Colors.green,
-        ),
-        _StatCard(
-          title: 'Utkast',
-          value: '${draftForms.length}',
-          icon: Icons.edit_note,
-          color: Colors.orange,
-        ),
-        _StatCard(
-          title: 'Svar (senaste)',
-          value: '$responsesCount',
-          icon: Icons.bar_chart,
-          color: Colors.purple,
-        ),
-      ],
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        children: [
+          _StatCard(
+            title: 'Grupper',
+            subtitle: 'Totalt antal grupper',
+            value: '${groups.length}',
+            icon: Icons.group_outlined,
+            color: const Color(0xFF0891B2),
+          ),
+          const SizedBox(width: 12),
+          _StatCard(
+            title: 'Skickade enkäter',
+            subtitle: 'Totalt antal skickade',
+            value: '${sentForms.length}',
+            icon: Icons.send_outlined,
+            color: const Color(0xFF059669),
+          ),
+          const SizedBox(width: 12),
+          _StatCard(
+            title: 'Utkast',
+            subtitle: 'Enkäter i utkast',
+            value: '${draftForms.length}',
+            icon: Icons.edit_note_outlined,
+            color: const Color(0xFFF59E0B),
+          ),
+          const SizedBox(width: 12),
+          _StatCard(
+            title: 'Svar på senaste enkäten',
+            subtitle: latestFormTitle,
+            value: '$responsesCount',
+            icon: Icons.bar_chart_outlined,
+            color: const Color(0xFF7C3AED),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -154,45 +160,67 @@ class _StatsGrid extends ConsumerWidget {
 class _StatCard extends StatelessWidget {
   const _StatCard({
     required this.title,
+    required this.subtitle,
     required this.value,
     required this.icon,
     required this.color,
   });
 
   final String title;
+  final String subtitle;
   final String value;
   final IconData icon;
   final Color color;
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Icon(icon, color: color),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  value,
-                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                Text(
-                  title,
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
-                ),
-              ],
+    return Container(
+      width: 160,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: const Border.fromBorderSide(BorderSide(color: Color(0xFFEEEEEE))),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              color: color.withAlpha(20),
+              borderRadius: BorderRadius.circular(10),
             ),
-          ],
-        ),
+            child: Icon(icon, size: 20, color: color),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            value,
+            style: const TextStyle(
+              fontSize: 28,
+              fontWeight: FontWeight.bold,
+              color: Color(0xFF1A1A1A),
+              height: 1,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            title,
+            style: const TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: Color(0xFF424242),
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            subtitle,
+            style: const TextStyle(fontSize: 11, color: Color(0xFF9E9E9E)),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ],
       ),
     );
   }

@@ -10,6 +10,25 @@ import '../../providers/group_provider.dart';
 import '../../providers/response_provider.dart';
 
 const _kPrimaryRed = Color(0xFFD32F2F);
+const _kBg = Color(0xFFF7F7F7);
+
+const _kCardColors = [
+  Color(0xFFD32F2F),
+  Color(0xFFF59E0B),
+  Color(0xFF7C3AED),
+  Color(0xFF0891B2),
+  Color(0xFF059669),
+  Color(0xFFDB2777),
+];
+
+const _kCardIcons = [
+  Icons.favorite_outline,
+  Icons.star_outline,
+  Icons.school_outlined,
+  Icons.work_outline,
+  Icons.people_outline,
+  Icons.assignment_outlined,
+];
 
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
@@ -23,117 +42,131 @@ class HomeScreen extends ConsumerWidget {
     final groupsAsync = ref.watch(userGroupsProvider);
 
     return Scaffold(
-      backgroundColor: Colors.white,
-      body: formsAsync.when(
-        loading: () => _HomeLayout(
-          firstName: user.name.split(' ').first,
-          formCount: null,
-          child: const Center(child: CircularProgressIndicator()),
-        ),
-        error: (e, _) => Center(child: Text('Fel: $e')),
-        data: (forms) => groupsAsync.when(
-          loading: () => _HomeLayout(
+      backgroundColor: _kBg,
+      body: SafeArea(
+        child: formsAsync.when(
+          loading: () => _layout(
             firstName: user.name.split(' ').first,
-            formCount: forms.length,
+            formCount: null,
             child: const Center(child: CircularProgressIndicator()),
           ),
           error: (e, _) => Center(child: Text('Fel: $e')),
-          data: (groups) => _HomeLayout(
-            firstName: user.name.split(' ').first,
-            formCount: forms.length,
-            child: _FormFeed(forms: forms, groups: groups, userId: user.id),
+          data: (forms) => groupsAsync.when(
+            loading: () => _layout(
+              firstName: user.name.split(' ').first,
+              formCount: forms.length,
+              child: const Center(child: CircularProgressIndicator()),
+            ),
+            error: (e, _) => Center(child: Text('Fel: $e')),
+            data: (groups) => _layout(
+              firstName: user.name.split(' ').first,
+              formCount: forms.length,
+              child: _FormFeed(forms: forms, groups: groups, userId: user.id),
+            ),
           ),
         ),
       ),
     );
   }
+
+  Widget _layout({
+    required String firstName,
+    required int? formCount,
+    required Widget child,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _HomeHeader(firstName: firstName, formCount: formCount),
+        Expanded(child: child),
+      ],
+    );
+  }
 }
 
-class _HomeLayout extends StatelessWidget {
-  const _HomeLayout({
-    required this.firstName,
-    required this.formCount,
-    required this.child,
-  });
+class _HomeHeader extends StatelessWidget {
+  const _HomeHeader({required this.firstName, required this.formCount});
 
   final String firstName;
   final int? formCount;
-  final Widget child;
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Container(
-          color: _kPrimaryRed,
-          child: SafeArea(
-            bottom: false,
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(24, 20, 24, 32),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Hej, $firstName!',
-                          style: const TextStyle(
-                            fontSize: 26,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                            letterSpacing: -0.3,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          formCount == null
-                              ? 'Laddar...'
-                              : formCount == 0
-                              ? 'Inga enkäter just nu'
-                              : '$formCount enkät${formCount == 1 ? '' : 'er'} tillgängliga',
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: Colors.white.withAlpha(200),
-                          ),
-                        ),
-                      ],
-                    ),
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  'Hej, $firstName! \u{1F44B}',
+                  style: const TextStyle(
+                    fontSize: 26,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF1A1A1A),
+                    letterSpacing: -0.3,
                   ),
+                ),
+              ),
+              Stack(
+                children: [
                   Container(
-                    width: 44,
-                    height: 44,
+                    width: 40,
+                    height: 40,
                     decoration: BoxDecoration(
-                      color: Colors.white.withAlpha(25),
+                      color: Colors.white,
                       borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: const Color(0xFFE8E8E8)),
                     ),
                     child: const Icon(
                       Icons.notifications_outlined,
-                      color: Colors.white,
-                      size: 22,
+                      color: Color(0xFF424242),
+                      size: 20,
+                    ),
+                  ),
+                  Positioned(
+                    right: 9,
+                    top: 9,
+                    child: Container(
+                      width: 7,
+                      height: 7,
+                      decoration: const BoxDecoration(
+                        color: _kPrimaryRed,
+                        shape: BoxShape.circle,
+                      ),
                     ),
                   ),
                 ],
               ),
-            ),
+            ],
           ),
-        ),
-        Expanded(
-          child: Container(
-            decoration: const BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-            ),
-            transform: Matrix4.translationValues(0, -20, 0),
-            child: ClipRRect(
-              borderRadius: const BorderRadius.vertical(
-                top: Radius.circular(20),
+          const SizedBox(height: 4),
+          const Text(
+            'Här är dina enkäter att besvara.',
+            style: TextStyle(fontSize: 15, color: Color(0xFF757575)),
+          ),
+          if (formCount != null && formCount! > 0) ...[
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: _kPrimaryRed,
+                borderRadius: BorderRadius.circular(20),
               ),
-              child: child,
+              child: Text(
+                '$formCount Tillgängliga enkäter',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
             ),
-          ),
-        ),
-      ],
+          ],
+        ],
+      ),
     );
   }
 }
@@ -149,73 +182,101 @@ class _FormFeed extends ConsumerWidget {
   final List<GroupModel> groups;
   final String userId;
 
+  String _groupName(FormModel form) {
+    return switch (form.targetType) {
+      FormTargetType.public => 'Allmän',
+      FormTargetType.both => 'Allmän + grupper',
+      FormTargetType.group => () {
+        if (form.targetGroupIds.isEmpty) return '';
+        try {
+          return groups
+              .firstWhere((g) => g.id == form.targetGroupIds.first)
+              .name;
+        } on StateError {
+          return '';
+        }
+      }(),
+    };
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    if (forms.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 80,
-              height: 80,
-              decoration: BoxDecoration(
-                color: const Color(0xFFF5F5F5),
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: const Icon(
-                Icons.inbox_outlined,
-                size: 40,
-                color: Color(0xFFBDBDBD),
-              ),
-            ),
-            const SizedBox(height: 16),
-            const Text(
-              'Inga enkäter just nu',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-                color: Color(0xFF424242),
-              ),
-            ),
-            const SizedBox(height: 6),
-            const Text(
-              'Kom tillbaka senare!',
-              style: TextStyle(color: Color(0xFF9E9E9E), fontSize: 14),
-            ),
-          ],
-        ),
-      );
-    }
-
     return ListView.separated(
       padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
-      itemCount: forms.length,
+      itemCount: forms.length + 1,
       separatorBuilder: (_, _) => const SizedBox(height: 10),
       itemBuilder: (context, i) {
+        if (i == forms.length) return const _EmptyStateCard();
         final form = forms[i];
         return _FormCard(
           form: form,
-          groupName: _groupName(form, groups),
+          groupName: _groupName(form),
           userId: userId,
+          cardColor: _kCardColors[i % _kCardColors.length],
+          cardIcon: _kCardIcons[i % _kCardIcons.length],
         );
       },
     );
   }
+}
 
-  String _groupName(FormModel form, List<GroupModel> groups) {
-    return form.isPublic
-        ? 'Allmän'
-        : () {
-            if (form.targetGroupIds.isEmpty) return '';
-            try {
-              return groups
-                  .firstWhere((g) => g.id == form.targetGroupIds.first)
-                  .name;
-            } on StateError {
-              return '';
-            }
-          }();
+class _EmptyStateCard extends StatelessWidget {
+  const _EmptyStateCard();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: const Border.fromBorderSide(
+          BorderSide(color: Color(0xFFEEEEEE)),
+        ),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 48,
+            height: 48,
+            decoration: BoxDecoration(
+              color: const Color(0xFFF5F5F5),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Icon(
+              Icons.inbox_outlined,
+              size: 24,
+              color: Color(0xFFBDBDBD),
+            ),
+          ),
+          const SizedBox(width: 14),
+          const Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Inga enkäter tillgängliga',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF424242),
+                  ),
+                ),
+                SizedBox(height: 3),
+                Text(
+                  'När du får tillgång till en enkät visas den här.',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Color(0xFF9E9E9E),
+                    height: 1.4,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 
@@ -224,107 +285,132 @@ class _FormCard extends ConsumerWidget {
     required this.form,
     required this.groupName,
     required this.userId,
+    required this.cardColor,
+    required this.cardIcon,
   });
 
   final FormModel form;
   final String groupName;
   final String userId;
+  final Color cardColor;
+  final IconData cardIcon;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final responseAsync = ref.watch(userResponseProvider((form.id, userId)));
 
-    return Card(
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: () => context.push('/form/${form.id}'),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
+    return GestureDetector(
+      onTap: () => context.push('/form/${form.id}'),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: const Border.fromBorderSide(
+            BorderSide(color: Color(0xFFEEEEEE)),
+          ),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              width: 48,
+              height: 48,
+              decoration: BoxDecoration(
+                color: cardColor.withAlpha(25),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(cardIcon, size: 24, color: cardColor),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Expanded(
-                    child: Text(
-                      form.title,
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        color: Color(0xFF1A1A1A),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: Text(
+                          form.title,
+                          style: const TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF1A1A1A),
+                          ),
+                        ),
                       ),
+                      responseAsync.whenOrNull(
+                            data: (r) => r != null
+                                ? Container(
+                                    margin: const EdgeInsets.only(left: 8),
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 8,
+                                      vertical: 3,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: Colors.green.withAlpha(20),
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: const Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Icon(
+                                          Icons.check_circle,
+                                          size: 11,
+                                          color: Colors.green,
+                                        ),
+                                        SizedBox(width: 3),
+                                        Text(
+                                          'Besvarad',
+                                          style: TextStyle(
+                                            fontSize: 11,
+                                            color: Colors.green,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  )
+                                : null,
+                          ) ??
+                          const SizedBox.shrink(),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    form.description,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      color: Color(0xFF757575),
+                      height: 1.4,
                     ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
                   ),
-                  const SizedBox(width: 8),
-                  responseAsync.whenOrNull(
-                        data: (r) => r != null
-                            ? Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 8,
-                                  vertical: 4,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: Colors.green.withAlpha(20),
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                child: const Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Icon(
-                                      Icons.check_circle,
-                                      size: 12,
-                                      color: Colors.green,
-                                    ),
-                                    SizedBox(width: 4),
-                                    Text(
-                                      'Besvarad',
-                                      style: TextStyle(
-                                        fontSize: 11,
-                                        color: Colors.green,
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              )
-                            : null,
-                      ) ??
-                      const SizedBox.shrink(),
-                ],
-              ),
-              const SizedBox(height: 6),
-              Text(
-                form.description,
-                style: const TextStyle(
-                  fontSize: 13,
-                  color: Color(0xFF757575),
-                  height: 1.4,
-                ),
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-              ),
-              const SizedBox(height: 14),
-              Row(
-                children: [
-                  if (groupName.isNotEmpty) ...[
-                    _MetaChip(icon: Icons.group_outlined, label: groupName),
-                    const SizedBox(width: 8),
-                  ],
-                  _MetaChip(
-                    icon: Icons.quiz_outlined,
-                    label: '${form.questions.length} frågor',
-                  ),
-                  const Spacer(),
-                  const Icon(
-                    Icons.arrow_forward_ios,
-                    size: 12,
-                    color: Color(0xFFBDBDBD),
+                  const SizedBox(height: 10),
+                  Row(
+                    children: [
+                      if (groupName.isNotEmpty) ...[
+                        _MetaChip(icon: Icons.group_outlined, label: groupName),
+                        const SizedBox(width: 6),
+                      ],
+                      _MetaChip(
+                        icon: Icons.quiz_outlined,
+                        label: '${form.questions.length} frågor',
+                      ),
+                      const Spacer(),
+                      const Icon(
+                        Icons.arrow_forward_ios,
+                        size: 12,
+                        color: Color(0xFFBDBDBD),
+                      ),
+                    ],
                   ),
                 ],
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
@@ -348,7 +434,7 @@ class _MetaChip extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 12, color: const Color(0xFF9E9E9E)),
+          Icon(icon, size: 11, color: const Color(0xFF9E9E9E)),
           const SizedBox(width: 4),
           Text(
             label,
