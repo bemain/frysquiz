@@ -3,10 +3,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/models/group_model.dart';
 import '../../../core/models/user_model.dart';
-import '../../../data/mock_data.dart';
 import '../../../providers/auth_provider.dart';
 import '../../../providers/group_provider.dart';
 import '../../../providers/service_providers.dart';
+import '../../../providers/user_provider.dart';
 
 class AdminGroupDetailScreen extends ConsumerWidget {
   const AdminGroupDetailScreen({super.key, required this.groupId});
@@ -42,12 +42,7 @@ class _GroupDetailContent extends ConsumerWidget {
     final currentUser = ref.watch(authNotifierProvider).currentUser!;
     final cs = Theme.of(context).colorScheme;
 
-    final members = MockData.users
-        .where((u) => group.memberIds.contains(u.id))
-        .toList();
-    final nonMembers = MockData.users
-        .where((u) => !group.memberIds.contains(u.id))
-        .toList();
+    final usersAsync = ref.watch(allUsersProvider);
 
     return Scaffold(
       appBar: AppBar(
@@ -66,63 +61,71 @@ class _GroupDetailContent extends ConsumerWidget {
           const SizedBox(width: 16),
         ],
       ),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          Text(
-            group.description,
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: cs.onSurfaceVariant,
-            ),
-          ),
-          const SizedBox(height: 24),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      body: usersAsync.when(
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (e, _) => Center(child: Text('Fel: $e')),
+        data: (users) {
+          final members = users
+              .where((u) => group.memberIds.contains(u.id))
+              .toList();
+          final nonMembers = users
+              .where((u) => !group.memberIds.contains(u.id))
+              .toList();
+
+          return ListView(
+            padding: const EdgeInsets.all(16),
             children: [
               Text(
-                'Medlemmar (${members.length})',
-                style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
+                group.description,
+                style: Theme.of(
+                  context,
+                ).textTheme.bodyMedium?.copyWith(color: cs.onSurfaceVariant),
               ),
-              if (!group.isOpen || currentUser.role == UserRole.superadmin)
-                TextButton.icon(
-                  onPressed: nonMembers.isEmpty
-                      ? null
-                      : () => _showAddMemberDialog(
-                            context,
-                            ref,
-                            nonMembers,
-                          ),
-                  icon: const Icon(Icons.person_add, size: 16),
-                  label: const Text('Lägg till'),
+              const SizedBox(height: 24),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Medlemmar (${members.length})',
+                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  if (!group.isOpen || currentUser.role == UserRole.superadmin)
+                    TextButton.icon(
+                      onPressed: nonMembers.isEmpty
+                          ? null
+                          : () =>
+                                _showAddMemberDialog(context, ref, nonMembers),
+                      icon: const Icon(Icons.person_add, size: 16),
+                      label: const Text('Lägg till'),
+                    ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              for (final member in members)
+                _MemberTile(
+                  member: member,
+                  group: group,
+                  isAdmin: group.adminIds.contains(member.id),
+                  currentUser: currentUser,
+                  onRemove: () async {
+                    await ref
+                        .read(groupServiceProvider)
+                        .removeMember(group.id, member.id);
+                    ref.invalidate(groupDetailProvider(group.id));
+                  },
+                  onToggleAdmin: () async {
+                    final isAdmin = group.adminIds.contains(member.id);
+                    await ref
+                        .read(groupServiceProvider)
+                        .setAdminStatus(group.id, member.id, isAdmin: !isAdmin);
+                    ref.invalidate(groupDetailProvider(group.id));
+                  },
                 ),
             ],
-          ),
-          const SizedBox(height: 8),
-          for (final member in members)
-            _MemberTile(
-              member: member,
-              group: group,
-              isAdmin: group.adminIds.contains(member.id),
-              currentUser: currentUser,
-              onRemove: () async {
-                await ref
-                    .read(groupServiceProvider)
-                    .removeMember(group.id, member.id);
-                ref.invalidate(groupDetailProvider(group.id));
-              },
-              onToggleAdmin: () async {
-                final isAdmin = group.adminIds.contains(member.id);
-                await ref.read(groupServiceProvider).setAdminStatus(
-                      group.id,
-                      member.id,
-                      isAdmin: !isAdmin,
-                    );
-                ref.invalidate(groupDetailProvider(group.id));
-              },
-            ),
-        ],
+          );
+        },
       ),
     );
   }
@@ -193,9 +196,7 @@ class _MemberTile extends StatelessWidget {
               itemBuilder: (_) => [
                 PopupMenuItem(
                   value: 'admin',
-                  child: Text(
-                    isAdmin ? 'Ta bort adminroll' : 'Gör till admin',
-                  ),
+                  child: Text(isAdmin ? 'Ta bort adminroll' : 'Gör till admin'),
                 ),
                 const PopupMenuItem(
                   value: 'remove',
@@ -204,13 +205,13 @@ class _MemberTile extends StatelessWidget {
               ],
             )
           : isAdmin
-              ? Chip(
-                  label: const Text('Admin'),
-                  side: BorderSide.none,
-                  backgroundColor: cs.secondaryContainer,
-                  labelStyle: TextStyle(color: cs.onSecondaryContainer),
-                )
-              : null,
+          ? Chip(
+              label: const Text('Admin'),
+              side: BorderSide.none,
+              backgroundColor: cs.secondaryContainer,
+              labelStyle: TextStyle(color: cs.onSecondaryContainer),
+            )
+          : null,
     );
   }
 }
@@ -246,12 +247,7 @@ class _AddMemberDialogState extends State<_AddMemberDialog> {
           border: OutlineInputBorder(),
         ),
         items: widget.nonMembers
-            .map(
-              (u) => DropdownMenuItem(
-                value: u.id,
-                child: Text(u.name),
-              ),
-            )
+            .map((u) => DropdownMenuItem(value: u.id, child: Text(u.name)))
             .toList(),
         onChanged: (v) => setState(() => _selectedUserId = v),
       ),

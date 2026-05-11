@@ -4,10 +4,12 @@ import '../core/services/auth_service.dart';
 import '../core/services/form_service.dart';
 import '../core/services/group_service.dart';
 import '../core/services/response_service.dart';
+import '../core/services/user_service.dart';
 import '../data/supabase_auth_service.dart';
 import '../data/supabase_form_service.dart';
 import '../data/supabase_group_service.dart';
 import '../data/supabase_response_service.dart';
+import '../data/supabase_user_service.dart';
 
 final authServiceProvider = Provider<AuthService>((_) => SupabaseAuthService());
 final groupServiceProvider = Provider<GroupService>(
@@ -17,3 +19,4 @@ final formServiceProvider = Provider<FormService>((_) => SupabaseFormService());
 final responseServiceProvider = Provider<ResponseService>(
   (_) => SupabaseResponseService(),
 );
+final userServiceProvider = Provider<UserService>((_) => SupabaseUserService());

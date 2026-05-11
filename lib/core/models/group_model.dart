@@ -20,7 +20,7 @@ class GroupModel {
     name: json['name'] as String,
     description: json['description'] as String,
     isOpen: json['is_open'] as bool,
-    memberIds: List<String>.from(json['user_ids'] as List? ?? []),
+    memberIds: List<String>.from(json['member_ids'] as List? ?? []),
     adminIds: List<String>.from(json['admin_ids'] as List? ?? []),
   );
 

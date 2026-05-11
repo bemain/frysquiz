@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/models/user_model.dart';
-import '../../../data/mock_data.dart';
 import '../../../providers/group_provider.dart';
+import '../../../providers/user_provider.dart';
 
 class AdminUsersScreen extends ConsumerWidget {
   const AdminUsersScreen({super.key});
@@ -11,22 +11,28 @@ class AdminUsersScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final groupsAsync = ref.watch(allGroupsProvider);
+    final usersAsync = ref.watch(allUsersProvider);
 
     return Scaffold(
       appBar: AppBar(title: const Text('Användare')),
       body: groupsAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => Center(child: Text('Fel: $e')),
-        data: (groups) => ListView.separated(
-          padding: const EdgeInsets.all(16),
-          itemCount: MockData.users.length,
-          separatorBuilder: (_, _) => const SizedBox(height: 8),
-          itemBuilder: (context, i) {
-            final user = MockData.users[i];
-            final userGroups =
-                groups.where((g) => g.memberIds.contains(user.id)).toList();
-            return _UserCard(user: user, userGroups: userGroups);
-          },
+        data: (groups) => usersAsync.when(
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (e, _) => Center(child: Text('Fel: $e')),
+          data: (users) => ListView.separated(
+            padding: const EdgeInsets.all(16),
+            itemCount: users.length,
+            separatorBuilder: (_, _) => const SizedBox(height: 8),
+            itemBuilder: (context, i) {
+              final user = users[i];
+              final userGroups = groups
+                  .where((g) => g.memberIds.contains(user.id))
+                  .toList();
+              return _UserCard(user: user, userGroups: userGroups);
+            },
+          ),
         ),
       ),
     );
@@ -67,8 +73,7 @@ class _UserCard extends StatelessWidget {
                     children: [
                       Text(
                         user.name,
-                        style:
-                            Theme.of(context).textTheme.titleSmall?.copyWith(
+                        style: Theme.of(context).textTheme.titleSmall?.copyWith(
                           fontWeight: FontWeight.w600,
                         ),
                       ),
@@ -78,9 +83,9 @@ class _UserCard extends StatelessWidget {
                   ),
                   Text(
                     user.email,
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: cs.onSurfaceVariant,
-                    ),
+                    style: Theme.of(
+                      context,
+                    ).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant),
                   ),
                   const SizedBox(height: 6),
                   Wrap(
@@ -92,8 +97,7 @@ class _UserCard extends StatelessWidget {
                           label: Text(group.name),
                           side: BorderSide.none,
                           backgroundColor: cs.surfaceContainerHighest,
-                          labelStyle:
-                              Theme.of(context).textTheme.labelSmall,
+                          labelStyle: Theme.of(context).textTheme.labelSmall,
                           padding: EdgeInsets.zero,
                           visualDensity: VisualDensity.compact,
                         ),
