@@ -183,20 +183,18 @@ class _FormFeed extends ConsumerWidget {
   final String userId;
 
   String _groupName(FormModel form) {
-    return switch (form.targetType) {
-      FormTargetType.public => 'Allmän',
-      FormTargetType.both => 'Allmän + grupper',
-      FormTargetType.group => () {
-        if (form.targetGroupIds.isEmpty) return '';
-        try {
-          return groups
-              .firstWhere((g) => g.id == form.targetGroupIds.first)
-              .name;
-        } on StateError {
-          return '';
-        }
-      }(),
-    };
+    return form.isPublic
+        ? 'Allmän'
+        : () {
+            if (form.targetGroupIds.isEmpty) return '';
+            try {
+              return groups
+                  .firstWhere((g) => g.id == form.targetGroupIds.first)
+                  .name;
+            } on StateError {
+              return '';
+            }
+          }();
   }
 
   @override
