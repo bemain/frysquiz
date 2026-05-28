@@ -45,7 +45,7 @@ class _FormDetailContent extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final cs = Theme.of(context).colorScheme;
     final isSent = form.status == FormStatus.sent;
-    final mockLink = 'https://frysquiz.se/fill/${form.id}';
+    final mockLink = 'https://bemain.github.io/frysquiz/#/fill/${form.id}';
 
     return Scaffold(
       appBar: AppBar(
