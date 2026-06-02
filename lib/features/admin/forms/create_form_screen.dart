@@ -589,6 +589,7 @@ class _QuestionEditor extends StatefulWidget {
 class _QuestionEditorState extends State<_QuestionEditor> {
   late final TextEditingController _textController;
   late final List<TextEditingController> _optControllers;
+  late final List<FocusNode> _optFocusNodes;
 
   @override
   void initState() {
@@ -597,9 +598,11 @@ class _QuestionEditorState extends State<_QuestionEditor> {
     _optControllers = widget.question.options
         .map((o) => TextEditingController(text: o))
         .toList();
+    _optFocusNodes = List.generate(_optControllers.length, (_) => FocusNode());
     // Ensure at least one option field when starting with a choice type
     if (_optControllers.isEmpty && _needsOptions(widget.question.type)) {
       _optControllers.add(TextEditingController());
+      _optFocusNodes.add(FocusNode());
     }
   }
 
@@ -609,27 +612,53 @@ class _QuestionEditorState extends State<_QuestionEditor> {
     for (final c in _optControllers) {
       c.dispose();
     }
+    for (final f in _optFocusNodes) {
+      f.dispose();
+    }
     super.dispose();
   }
 
   bool _needsOptions(QuestionType t) =>
       t == QuestionType.multipleChoice || t == QuestionType.singleChoice;
 
-  void _addOption() {
-    setState(() => _optControllers.add(TextEditingController()));
+  void _addOption({bool autofocus = false}) {
+    setState(() {
+      _optControllers.add(TextEditingController());
+      _optFocusNodes.add(FocusNode());
+    });
+    if (autofocus) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        _optFocusNodes.last.requestFocus();
+      });
+    }
   }
 
   void _removeOption(int index) {
     final removed = _optControllers.removeAt(index);
     removed.dispose();
+    final removedFocus = _optFocusNodes.removeAt(index);
+    removedFocus.dispose();
     setState(() {});
     _update();
+  }
+
+  void _onOptionSubmitted(int index) {
+    final isLast = index == _optControllers.length - 1;
+    if (isLast) {
+      _addOption(autofocus: true);
+    } else {
+      _optFocusNodes[index + 1].requestFocus();
+    }
   }
 
   void _update({QuestionType? type}) {
     final newType = type ?? widget.question.type;
     if (_needsOptions(newType) && _optControllers.isEmpty) {
-      setState(() => _optControllers.add(TextEditingController()));
+      setState(() {
+        _optControllers.add(TextEditingController());
+        _optFocusNodes.add(FocusNode());
+      });
     }
     final opts = _needsOptions(newType)
         ? _optControllers
@@ -737,10 +766,13 @@ class _QuestionEditorState extends State<_QuestionEditor> {
                       Expanded(
                         child: TextField(
                           controller: _optControllers[i],
+                          focusNode: _optFocusNodes[i],
                           decoration: InputDecoration(
                             hintText: 'Alternativ ${i + 1}',
                           ),
+                          textInputAction: TextInputAction.next,
                           onChanged: (_) => _update(),
+                          onSubmitted: (_) => _onOptionSubmitted(i),
                         ),
                       ),
                       if (_optControllers.length > 1)

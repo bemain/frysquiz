@@ -73,6 +73,12 @@ class MockGroupService implements GroupService {
   }
 
   @override
+  Future<void> deleteGroup(String groupId) async {
+    await Future.delayed(const Duration(milliseconds: 200));
+    _groups.removeWhere((g) => g.id == groupId);
+  }
+
+  @override
   Future<GroupModel> setAdminStatus(
     String groupId,
     String userId, {

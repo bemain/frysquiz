@@ -67,7 +67,11 @@ class _GroupsContent extends ConsumerWidget {
         else ...[
           _SectionHeader(title: 'Dina grupper (${userGroups.length})'),
           const SizedBox(height: 10),
-          for (final group in userGroups) _GroupCard(group: group),
+          for (final group in userGroups)
+            _GroupCard(
+              group: group,
+              leaveAction: () => _confirmLeave(context, ref, group, userId),
+            ),
         ],
         if (openGroups.isNotEmpty) ...[
           const SizedBox(height: 24),
@@ -82,11 +86,56 @@ class _GroupsContent extends ConsumerWidget {
                     .addMember(group.id, userId);
                 ref.invalidate(userGroupsProvider);
                 ref.invalidate(allGroupsProvider);
+                ref.invalidate(groupDetailProvider(group.id));
               },
             ),
         ],
       ],
     );
+  }
+
+  Future<void> _confirmLeave(
+    BuildContext context,
+    WidgetRef ref,
+    GroupModel group,
+    String userId,
+  ) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Lämna grupp?'),
+        content: Text('Vill du lämna "${group.name}"?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Avbryt'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: Theme.of(ctx).colorScheme.error,
+            ),
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Lämna'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    if (!context.mounted) return;
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      await ref.read(groupServiceProvider).removeMember(group.id, userId);
+      ref.invalidate(userGroupsProvider);
+      ref.invalidate(allGroupsProvider);
+      ref.invalidate(groupDetailProvider(group.id));
+      messenger.showSnackBar(
+        SnackBar(content: Text('Du lämnade "${group.name}".')),
+      );
+    } on Exception catch (e) {
+      messenger.showSnackBar(
+        SnackBar(content: Text('Kunde inte lämna gruppen: $e')),
+      );
+    }
   }
 }
 
@@ -146,11 +195,40 @@ class _EmptySection extends StatelessWidget {
   }
 }
 
-class _GroupCard extends StatelessWidget {
-  const _GroupCard({required this.group, this.joinAction});
+class _GroupCard extends StatefulWidget {
+  const _GroupCard({required this.group, this.joinAction, this.leaveAction});
 
   final GroupModel group;
-  final VoidCallback? joinAction;
+  final Future<void> Function()? joinAction;
+  final Future<void> Function()? leaveAction;
+
+  @override
+  State<_GroupCard> createState() => _GroupCardState();
+}
+
+class _GroupCardState extends State<_GroupCard> {
+  bool _joining = false;
+  bool _joined = false;
+
+  Future<void> _handleJoin() async {
+    if (widget.joinAction == null || _joining || _joined) return;
+    setState(() => _joining = true);
+    try {
+      await widget.joinAction!();
+      if (!mounted) return;
+      setState(() {
+        _joining = false;
+        _joined = true;
+      });
+      // Hold the success state briefly so the user sees the confirmation
+      // before the parent rebuild removes this card.
+      await Future<void>.delayed(const Duration(milliseconds: 700));
+    } on Exception {
+      if (!mounted) return;
+      setState(() => _joining = false);
+      rethrow;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -176,7 +254,7 @@ class _GroupCard extends StatelessWidget {
               ),
               child: Center(
                 child: Text(
-                  group.name[0].toUpperCase(),
+                  widget.group.name[0].toUpperCase(),
                   style: const TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
@@ -191,7 +269,7 @@ class _GroupCard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    group.name,
+                    widget.group.name,
                     style: const TextStyle(
                       fontSize: 15,
                       fontWeight: FontWeight.w600,
@@ -200,7 +278,7 @@ class _GroupCard extends StatelessWidget {
                   ),
                   const SizedBox(height: 2),
                   Text(
-                    group.description,
+                    widget.group.description,
                     style: const TextStyle(
                       fontSize: 13,
                       color: Color(0xFF9E9E9E),
@@ -210,7 +288,7 @@ class _GroupCard extends StatelessWidget {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    '${group.memberIds.length} medl${group.memberIds.length == 1 ? 'em' : 'emmar'}',
+                    '${widget.group.memberIds.length} medl${widget.group.memberIds.length == 1 ? 'em' : 'emmar'}',
                     style: const TextStyle(
                       fontSize: 11,
                       color: Color(0xFFBDBDBD),
@@ -219,19 +297,100 @@ class _GroupCard extends StatelessWidget {
                 ],
               ),
             ),
-            if (joinAction != null)
-              FilledButton(
-                onPressed: joinAction,
-                style: FilledButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 14,
-                    vertical: 8,
-                  ),
-                  textStyle: const TextStyle(fontSize: 13),
-                ),
-                child: const Text('Gå med'),
+            if (widget.joinAction != null)
+              _JoinButton(
+                joining: _joining,
+                joined: _joined,
+                onPressed: _handleJoin,
+              ),
+            if (widget.leaveAction != null)
+              IconButton(
+                icon: const Icon(Icons.logout, size: 18),
+                color: const Color(0xFF9E9E9E),
+                tooltip: 'Lämna grupp',
+                onPressed: () => widget.leaveAction!(),
               ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _JoinButton extends StatelessWidget {
+  const _JoinButton({
+    required this.joining,
+    required this.joined,
+    required this.onPressed,
+  });
+
+  final bool joining;
+  final bool joined;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final bg = joined ? Colors.green : _kPrimaryRed;
+    final fg = Colors.white;
+
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 220),
+      curve: Curves.easeOut,
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(10),
+          onTap: joining || joined ? null : onPressed,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+            child: AnimatedSwitcher(
+              duration: const Duration(milliseconds: 200),
+              transitionBuilder: (child, anim) => FadeTransition(
+                opacity: anim,
+                child: ScaleTransition(scale: anim, child: child),
+              ),
+              child: joining
+                  ? const SizedBox(
+                      key: ValueKey('loading'),
+                      height: 16,
+                      width: 16,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    )
+                  : joined
+                      ? Row(
+                          key: const ValueKey('joined'),
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.check, size: 16, color: fg),
+                            const SizedBox(width: 4),
+                            Text(
+                              'Med',
+                              style: TextStyle(
+                                color: fg,
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        )
+                      : Text(
+                          'Gå med',
+                          key: const ValueKey('join'),
+                          style: TextStyle(
+                            color: fg,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+            ),
+          ),
         ),
       ),
     );

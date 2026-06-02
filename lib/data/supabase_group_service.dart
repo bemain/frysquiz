@@ -105,6 +105,12 @@ class SupabaseGroupService implements GroupService {
   }
 
   @override
+  Future<void> deleteGroup(String groupId) async {
+    await _client.from('group_members').delete().eq('group_id', groupId);
+    await _client.from('groups').delete().eq('id', groupId);
+  }
+
+  @override
   Future<GroupModel> setAdminStatus(
     String groupId,
     String userId, {

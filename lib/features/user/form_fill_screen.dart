@@ -168,14 +168,23 @@ class FormFillContentState extends ConsumerState<FormFillContent> {
     );
     await ref.read(responseServiceProvider).submitResponse(response);
     if (!mounted) return;
-    // Invalidate so the already-answered guard reflects the new submission
-    ref.invalidate(userResponseProvider((widget.form.id, user?.id ?? '')));
     setState(() => _submitted = true);
   }
 
   @override
   Widget build(BuildContext context) {
-    if (_submitted) return _ThankYouScreen(isPublic: widget.isPublic);
+    if (_submitted) {
+      return _ThankYouScreen(
+        isPublic: widget.isPublic,
+        onGoHome: () {
+          final user = ref.read(authNotifierProvider).currentUser;
+          ref.invalidate(
+            userResponseProvider((widget.form.id, user?.id ?? '')),
+          );
+          context.go('/home');
+        },
+      );
+    }
 
     final questions = widget.form.questions;
     final progress = ((_currentIndex + 1) / questions.length);
@@ -722,9 +731,10 @@ class _YesNoButton extends StatelessWidget {
 }
 
 class _ThankYouScreen extends StatelessWidget {
-  const _ThankYouScreen({required this.isPublic});
+  const _ThankYouScreen({required this.isPublic, this.onGoHome});
 
   final bool isPublic;
+  final VoidCallback? onGoHome;
 
   @override
   Widget build(BuildContext context) {
@@ -770,7 +780,7 @@ class _ThankYouScreen extends StatelessWidget {
                 SizedBox(
                   width: double.infinity,
                   child: FilledButton.icon(
-                    onPressed: () => context.go('/home'),
+                    onPressed: onGoHome ?? () => context.go('/home'),
                     icon: const Icon(Icons.home),
                     label: const Text('Tillbaka till startsidan'),
                   ),

@@ -61,7 +61,7 @@ class _OverviewContent extends ConsumerWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Hej, ${user.name.split(' ').first}! \u{1F44B}',
+            'Hej, ${user.name.split(' ').first}!',
             style: Theme.of(context).textTheme.headlineSmall?.copyWith(
               fontWeight: FontWeight.bold,
             ),

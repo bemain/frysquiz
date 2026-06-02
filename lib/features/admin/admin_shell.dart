@@ -67,6 +67,9 @@ class AdminShell extends ConsumerWidget {
       builder: (context, constraints) {
         final isWide = constraints.maxWidth >= 800;
 
+        final isSubRoute = selectedIndex >= 0 &&
+            location != visibleDestinations[selectedIndex].path;
+
         if (isWide) {
           return Scaffold(
             body: Row(
@@ -82,6 +85,10 @@ class AdminShell extends ConsumerWidget {
               ],
             ),
           );
+        }
+
+        if (isSubRoute) {
+          return child;
         }
 
         return Scaffold(

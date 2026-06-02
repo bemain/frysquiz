@@ -17,4 +17,5 @@ abstract interface class GroupService {
     String userId, {
     required bool isAdmin,
   });
+  Future<void> deleteGroup(String groupId);
 }
